@@ -1,20 +1,40 @@
-# cron-job.org Setup — 7 posts/day, random timing
+# cron-job.org Setup — 1 cron job, 7 posts/day
 
-Create **7 separate cron jobs** on [cron-job.org](https://cron-job.org).
-
-Each job fires at an **irregular base time** (~every 3 hours).  
-Then GitHub Actions adds a **random 8–42 minute delay** before posting.
-
-**Result:** posts land at unpredictable times like `10:51`, `14:17`, `21:03` — never sharp on the hour.
+You only need **ONE cron job**. It fires every ~3 hours, and the script:
+1. Waits a **random 8–42 minutes** before posting
+2. Checks if **7 posts already went out today** — if yes, skips
+3. Otherwise posts one curiosity
 
 ---
 
-## Settings (same for all 7 jobs)
+## Create ONE job on [cron-job.org](https://cron-job.org)
+
+### COMMON tab
 
 | Field | Value |
 |---|---|
+| **Title** | `StiaiCa` |
 | **URL** | `https://api.github.com/repos/TonyHebe/stiai-ca/dispatches` |
-| **Method** | `POST` |
+| **Enable job** | ON |
+
+**Schedule → Custom → Crontab:**
+
+```
+37 */3 * * *
+```
+
+This fires **8 times per day** at irregular `:37` minutes:
+`00:37, 03:37, 06:37, 09:37, 12:37, 15:37, 18:37, 21:37`
+
+The script caps at **7 posts/day**, so one run naturally skips.
+
+Actual post times = trigger + **8–42 min random** → e.g. `10:04`, `13:21`, `19:58`
+
+### ADVANCED tab
+
+| Field | Value |
+|---|---|
+| **Request method** | `POST` |
 
 **Headers:**
 
@@ -33,50 +53,28 @@ Content-Type: application/json
 
 ---
 
-## The 7 schedules (Romania time, Europe/Bucharest)
+## How it works
 
-Use **irregular minutes** on purpose — avoids bot-like patterns.
-
-| Job name | Base trigger time | Actual post window |
-|---|---|---|
-| StiaiCa_1 | **07:17** daily | 07:25 – 07:59 |
-| StiaiCa_2 | **10:38** daily | 10:46 – 11:20 |
-| StiaiCa_3 | **13:52** daily | 14:00 – 14:34 |
-| StiaiCa_4 | **17:23** daily | 17:31 – 18:05 |
-| StiaiCa_5 | **20:41** daily | 20:49 – 21:23 |
-| StiaiCa_6 | **23:58** daily | 00:06 – 00:40 |
-| StiaiCa_7 | **03:14** daily | 03:22 – 03:56 |
-
-> Times in the right column are approximate (base + 8–42 min random delay).
+```
+ONE cron (every 3h at :37)
+    → GitHub Actions starts
+    → sleeps 8-42 min randomly
+    → checks: posted 7 times today?
+        YES → skip
+        NO  → generate + post 1 curiosity
+```
 
 ---
 
-## Cost estimate (7 posts/day)
+## Cost: ~$15–18/month
 
-| Item | ~Monthly |
-|---|---|
-| OpenAI images + text | **$14–18** |
-| cron-job.org | Free (7 jobs) |
-| GitHub Actions | Free |
-| Facebook | Free |
-| **Total** | **~$15–18/month** |
+7 posts/day × 30 days = 210 AI images/month.
 
 ---
 
 ## Test
 
-1. Create one job, click **Execute now**
-2. Check [github.com/TonyHebe/stiai-ca/actions](https://github.com/TonyHebe/stiai-ca/actions) — workflow should start
-3. Post appears on Facebook after the random delay (8–42 min)
+Click **Execute now** on your cron job, then check:
+[github.com/TonyHebe/stiai-ca/actions](https://github.com/TonyHebe/stiai-ca/actions)
 
----
-
-## Prerequisites
-
-Make sure these **GitHub Secrets** are set:
-
-- `FACEBOOK_PAGE_ID`
-- `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `OPENAI_API_KEY`
-
-See `GITHUB_SETUP.md` for details.
+Post appears after the random delay (8–42 min).

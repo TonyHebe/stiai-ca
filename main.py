@@ -54,6 +54,8 @@ MAX_DELAY     = int(os.getenv("MAX_RANDOM_DELAY_SECONDS", "3600"))
 LOW_CONTENT_THRESHOLD = int(os.getenv("LOW_CONTENT_THRESHOLD", "3"))
 # How many new curiosities to generate when the queue is low
 GENERATE_BATCH_SIZE   = int(os.getenv("GENERATE_BATCH_SIZE", "5"))
+MAX_POSTS_PER_DAY     = int(os.getenv("MAX_POSTS_PER_DAY", "0"))  # 0 = unlimited
+TIMEZONE              = os.getenv("TIMEZONE", "Europe/Bucharest")
 
 
 # ── State helpers ─────────────────────────────────────────────────────────────
@@ -77,6 +79,38 @@ def append_posted_log(entry: dict) -> None:
     log.append(entry)
     with open(POSTED_LOG, "w", encoding="utf-8") as fh:
         json.dump(log, fh, ensure_ascii=False, indent=2)
+
+
+def posts_today() -> int:
+    """Count how many posts were made today (in TIMEZONE)."""
+    if not POSTED_LOG.exists():
+        return 0
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(TIMEZONE)
+    except Exception:
+        tz = None
+
+    today = datetime.now(tz).date() if tz else datetime.now().date()
+    with open(POSTED_LOG, encoding="utf-8") as fh:
+        log = json.load(fh)
+
+    count = 0
+    for entry in log:
+        posted_at = entry.get("posted_at", "")
+        if not posted_at:
+            continue
+        try:
+            dt = datetime.fromisoformat(posted_at)
+            if tz and dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+            elif tz:
+                dt = dt.astimezone(tz)
+            if dt.date() == today:
+                count += 1
+        except ValueError:
+            continue
+    return count
 
 
 def pick_next(curiosities: list[dict]) -> dict | None:
@@ -172,6 +206,15 @@ def run(dry_run: bool = False) -> None:
         sys.exit(
             "[main] ERROR: FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN must be set in .env"
         )
+
+    if MAX_POSTS_PER_DAY > 0 and not dry_run:
+        today_count = posts_today()
+        if today_count >= MAX_POSTS_PER_DAY:
+            print(
+                f"[main] Daily limit reached ({today_count}/{MAX_POSTS_PER_DAY}). "
+                "Skipping — will try again at next cron trigger."
+            )
+            return
 
     curiosities = load_curiosities()
 

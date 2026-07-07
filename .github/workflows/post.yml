@@ -49,6 +49,8 @@ jobs:
           OPENAI_MODEL=gpt-4o-mini
           LOW_CONTENT_THRESHOLD=4
           GENERATE_BATCH_SIZE=8
+          MAX_POSTS_PER_DAY=7
+          TIMEZONE=Europe/Bucharest
           MAX_RANDOM_DELAY_SECONDS=0
           EOF
 
