@@ -1,16 +1,14 @@
 name: Stiai Ca Auto-Poster
 
 on:
-  # Built-in schedule (works without cron-job.org)
-  schedule:
-    - cron: "0 6 * * *"   # 09:00 Romania (UTC+3)
-    - cron: "0 10 * * *"  # 13:00 Romania
-    - cron: "0 16 * * *"  # 19:00 Romania
+  # Disabled — use cron-job.org instead (more reliable timing)
+  # schedule:
+  #   - cron: "0 6 * * *"
+  #   - cron: "0 10 * * *"
+  #   - cron: "0 16 * * *"
 
-  # Manual run from GitHub → Actions → Run workflow
   workflow_dispatch:
 
-  # Triggered by cron-job.org via GitHub API
   repository_dispatch:
     types: [cron-post]
 
