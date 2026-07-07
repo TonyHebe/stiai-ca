@@ -1,0 +1,66 @@
+name: Stiai Ca Auto-Poster
+
+on:
+  # Built-in schedule (works without cron-job.org)
+  schedule:
+    - cron: "0 6 * * *"   # 09:00 Romania (UTC+3)
+    - cron: "0 10 * * *"  # 13:00 Romania
+    - cron: "0 16 * * *"  # 19:00 Romania
+
+  # Manual run from GitHub → Actions → Run workflow
+  workflow_dispatch:
+
+  # Triggered by cron-job.org via GitHub API
+  repository_dispatch:
+    types: [cron-post]
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download fonts
+        run: python setup_project.py
+
+      - name: Random delay (0-60 min)
+        run: python -c "import random,time; d=random.randint(0,3600); print(f'Sleeping {d}s'); time.sleep(d)"
+
+      - name: Create .env from secrets
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cat > .env << EOF
+          FACEBOOK_PAGE_ID=${FACEBOOK_PAGE_ID}
+          FACEBOOK_PAGE_ACCESS_TOKEN=${FACEBOOK_PAGE_ACCESS_TOKEN}
+          OPENAI_API_KEY=${OPENAI_API_KEY}
+          OPENAI_MODEL=gpt-4o-mini
+          LOW_CONTENT_THRESHOLD=3
+          GENERATE_BATCH_SIZE=5
+          MAX_RANDOM_DELAY_SECONDS=0
+          EOF
+
+      - name: Post to Facebook
+        run: python main.py --no-delay
+
+      - name: Save state back to GitHub
+        run: |
+          git config user.name "StiaiCa Bot"
+          git config user.email "bot@stiai-ca.local"
+          git add content/curiosities.json posted/posted_log.json assets/images/ || true
+          git diff --staged --quiet || git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push

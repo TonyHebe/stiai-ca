@@ -65,29 +65,61 @@ def get_long_lived_user_token(short_token: str) -> str:
     return token
 
 
-def verify_page_token(token: str, page_id: str) -> str:
+def get_page_access_token(long_user_token: str, page_id: str) -> str:
     """
-    Verify the long-lived token works by querying the page name.
-    Returns the token unchanged.
+    Use the long-lived user token to get a permanent Page Access Token.
+    Page tokens derived from a long-lived user token never expire.
     """
-    print("[2/3] Verifying token against the page...")
+    print("[2/3] Fetching permanent Page Access Token...")
+
+    # Try direct page endpoint first
     resp = requests.get(
         f"{GRAPH}/{page_id}",
-        params={"fields": "name,id", "access_token": token},
+        params={"fields": "access_token,name,id", "access_token": long_user_token},
         timeout=15,
     )
     data = resp.json()
-    if not resp.ok or "error" in data:
-        # Try /me to at least confirm the token is valid
-        resp2 = requests.get(f"{GRAPH}/me", params={"access_token": token}, timeout=15)
-        data2 = resp2.json()
-        if "error" in data2:
-            sys.exit(f"[refresh_token] Token invalid: {data2['error']['message']}")
-        print(f"       OK Token valid (me={data2.get('name', data2.get('id', '?'))})")
-        print(f"       Note: page lookup returned an error — the token is still saved.")
-    else:
-        print(f"       OK Token valid for page: {data.get('name')} (id={data.get('id')})")
-    return token
+
+    if resp.ok and "access_token" in data:
+        print(f"       OK Page token obtained for: {data.get('name')} (id={data.get('id')})")
+        return data["access_token"]
+
+    # Fallback: use /me/accounts
+    print("       Trying /me/accounts fallback...")
+    resp2 = requests.get(
+        f"{GRAPH}/me/accounts",
+        params={"access_token": long_user_token},
+        timeout=15,
+    )
+    data2 = resp2.json()
+
+    if resp2.ok and "data" in data2:
+        pages = data2["data"]
+        print(f"       Found {len(pages)} page(s):")
+        for p in pages:
+            print(f"         - {p.get('name')} (id={p.get('id')})")
+        match = next((p for p in pages if p.get("id") == page_id), None) or (pages[0] if pages else None)
+        if match and match.get("access_token"):
+            # Update page ID in .env if different
+            if match.get("id") != page_id:
+                content = ENV_FILE.read_text(encoding="utf-8")
+                import re as _re
+                ENV_FILE.write_text(
+                    _re.sub(r"^(FACEBOOK_PAGE_ID\s*=).*$", rf"\g<1>{match['id']}", content, flags=_re.MULTILINE),
+                    encoding="utf-8"
+                )
+                print(f"       Updated FACEBOOK_PAGE_ID to {match['id']}")
+            print(f"       OK Page token obtained for: {match.get('name')}")
+            return match["access_token"]
+
+    # Last resort: save user token (some permissions work with it)
+    print("       Warning: Could not get page-specific token, saving user token.")
+    resp3 = requests.get(f"{GRAPH}/me", params={"access_token": long_user_token}, timeout=15)
+    data3 = resp3.json()
+    if "error" in data3:
+        sys.exit(f"[refresh_token] Token invalid: {data3['error']['message']}")
+    print(f"       OK User token valid (me={data3.get('name', '?')})")
+    return long_user_token
 
 
 def update_env_file(new_token: str) -> None:
@@ -109,7 +141,7 @@ def main() -> None:
     check_env()
 
     long_lived_token = get_long_lived_user_token(SHORT_TOKEN)
-    page_token       = verify_page_token(long_lived_token, PAGE_ID)
+    page_token       = get_page_access_token(long_lived_token, PAGE_ID)
     update_env_file(page_token)
 
     print(

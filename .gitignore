@@ -3,5 +3,4 @@ venv/
 __pycache__/
 *.pyc
 output/
-posted/posted_log.json
 assets/images/bg_*.jpg
