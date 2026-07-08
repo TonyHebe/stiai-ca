@@ -152,6 +152,25 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
         return curiosities
 
 
+def ensure_image_text(item: dict, curiosities: list[dict]) -> None:
+    """Expand legacy short image_text entries to 5-6 sentences before posting."""
+    if not OPENAI_KEY:
+        return
+    try:
+        import content_generator
+        if not content_generator.image_text_is_short(item.get("image_text", "")):
+            return
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_KEY)
+        item["image_text"] = content_generator.expand_image_text(
+            item["title"], item.get("image_text", ""), client
+        )
+        save_curiosities(curiosities)
+        print(f"[main] Expanded image_text for: {item['title']}")
+    except Exception as exc:
+        print(f"[main] Could not expand image_text: {exc}")
+
+
 # ── Background image resolution ──────────────────────────────────────────────
 
 def _generate_background_with_openai(curiosity: dict, force: bool = False) -> str | None:
@@ -272,6 +291,8 @@ def run(dry_run: bool = False) -> None:
         print(f"[main] Cycle reset — starting over with: {item['title']}")
 
     print(f"[main] Selected: [{item['id']}] {item['title']}")
+
+    ensure_image_text(item, curiosities)
 
     # Resolve background image
     bg_path = resolve_background(item)

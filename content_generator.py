@@ -42,6 +42,48 @@ IMAGES_DIR       = BASE_DIR / "assets" / "images"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+MIN_IMAGE_TEXT_CHARS     = 400
+MIN_IMAGE_TEXT_SENTENCES = 5
+
+
+def count_sentences(text: str) -> int:
+    return len([p for p in re.split(r"[.!?…]+", text) if p.strip()])
+
+
+def image_text_is_short(text: str) -> bool:
+    text = (text or "").strip()
+    return len(text) < MIN_IMAGE_TEXT_CHARS or count_sentences(text) < MIN_IMAGE_TEXT_SENTENCES
+
+
+def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
+    """Rewrite short on-image text into 5-6 full sentences."""
+    print(f"  [GPT] Expanding image_text for: {title} ...", flush=True)
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"Rescrie textul pentru imagine despre {title}.\n"
+                    f"Text actual (prea scurt): {current_text}\n\n"
+                    "Returneaza EXCLUSIV JSON: "
+                    '{"image_text": "Exact 5-6 propozitii complete, fiecare 12-20 cuvinte, '
+                    "minim 450 caractere, maxim 650. Fapte stiintifice concrete. "
+                    'Fara ghilimele interioare."}'
+                ),
+            },
+        ],
+        temperature=0.8,
+        max_tokens=800,
+        response_format={"type": "json_object"},
+    )
+    data = json.loads(resp.choices[0].message.content.strip())
+    text = data["image_text"].strip()
+    if len(text) > 680:
+        text = text[:677] + "..."
+    return text
+
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = (
@@ -141,6 +183,12 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
     missing  = required - data.keys()
     if missing:
         raise ValueError(f"GPT response missing fields: {missing}")
+
+    if image_text_is_short(data["image_text"]):
+        raise ValueError(
+            f"image_text too short ({len(data['image_text'])} chars, "
+            f"{count_sentences(data['image_text'])} sentences)"
+        )
 
     # Safety: trim image_text only if extremely long
     if len(data["image_text"]) > 680:

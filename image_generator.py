@@ -23,11 +23,12 @@ GRADIENT_START_RATIO  = 0.22   # More room for longer text block
 SOLID_START_RATIO     = 0.44   # Solid black covers bottom half
 GRADIENT_MAX_ALPHA    = 255
 
-TITLE_FONT_SIZE = 118
-BODY_FONT_SIZE  = 52
-LINE_SPACING    = 12
-SIDE_PADDING    = 60
-MAX_BODY_LINES  = 16          # Fits 5-6 sentences after wrapping
+TITLE_FONT_SIZE = 96    # Max size; auto-shrinks for long titles
+TITLE_FONT_MIN  = 56
+BODY_FONT_SIZE  = 42
+LINE_SPACING    = 10
+SIDE_PADDING    = 56
+MAX_BODY_LINES  = 18          # Fits 5-6 sentences after wrapping
 
 
 # ── Font helpers ─────────────────────────────────────────────────────────────
@@ -52,6 +53,45 @@ def _get_fonts():
     title_font = _load_font("Montserrat-Bold.ttf", TITLE_FONT_SIZE)
     body_font  = _load_font("Montserrat-Regular.ttf", BODY_FONT_SIZE)
     return title_font, body_font
+
+
+def _text_width(text: str, font: ImageFont.FreeTypeFont) -> float:
+    try:
+        return font.getlength(text)
+    except AttributeError:
+        return len(text) * (font.size * 0.55)
+
+
+def _fit_title(title: str) -> tuple[list[str], ImageFont.FreeTypeFont]:
+    """Shrink font and/or split title so it fits within the image width."""
+    max_w = TARGET_W - 2 * SIDE_PADDING
+    words = title.split()
+
+    for size in range(TITLE_FONT_SIZE, TITLE_FONT_MIN - 1, -2):
+        font = _load_font("Montserrat-Bold.ttf", size)
+        if _text_width(title, font) <= max_w:
+            return [title], font
+
+        if len(words) >= 2:
+            for split in range(1, len(words)):
+                line1 = " ".join(words[:split])
+                line2 = " ".join(words[split:])
+                if _text_width(line1, font) <= max_w and _text_width(line2, font) <= max_w:
+                    return [line1, line2], font
+
+    font = _load_font("Montserrat-Bold.ttf", TITLE_FONT_MIN)
+    lines, current = [], ""
+    for word in words:
+        candidate = (current + " " + word).strip()
+        if _text_width(candidate, font) <= max_w:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines or [title], font
 
 
 # ── Image background helpers ─────────────────────────────────────────────────
@@ -193,6 +233,7 @@ def generate_post_image(
         *output_path* on success.
     """
     title_font, body_font = _get_fonts()
+    title_lines, title_font = _fit_title(title)
 
     # Prepare background
     bg = Image.open(background_path).convert("RGB")
@@ -206,7 +247,7 @@ def generate_post_image(
 
     # Measure heights
     _, _, _, title_lh = title_font.getbbox("Ag")
-    title_block_h = title_lh + 20
+    title_block_h = len(title_lines) * (title_lh + 8) + 12
 
     _, _, _, body_lh = body_font.getbbox("Ag")
     body_line_h   = body_lh + LINE_SPACING
@@ -216,14 +257,17 @@ def generate_post_image(
     total_h = title_block_h + gap_title_body + body_block_h
 
     # Vertical centering inside the bottom text area
-    text_area_top = int(TARGET_H * (GRADIENT_START_RATIO + 0.06))
-    text_area_h   = TARGET_H - text_area_top - 40
+    text_area_top = int(TARGET_H * (GRADIENT_START_RATIO + 0.04))
+    text_area_h   = TARGET_H - text_area_top - 50
     start_y = text_area_top + max(0, (text_area_h - total_h) // 2)
 
     cx = TARGET_W // 2  # horizontal center
 
-    # Draw title
-    _draw_text_with_shadow(draw, (cx, start_y), title, title_font, TITLE_COLOR)
+    # Draw title (one or two lines, auto-sized)
+    title_y = start_y
+    for line in title_lines:
+        _draw_text_with_shadow(draw, (cx, title_y), line, title_font, TITLE_COLOR)
+        title_y += title_lh + 8
 
     # Draw body lines
     body_y = start_y + title_block_h + gap_title_body
