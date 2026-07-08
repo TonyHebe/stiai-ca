@@ -67,10 +67,10 @@ USER_PROMPT_TEMPLATE = (
     'Include: introducere captivanta, context istoric/stiintific, fapte detaliate, '
     'exemple concrete din Romania sau lume, de ce conteaza, curiozitati bonus. '
     'La final adauga 8-12 hashtag-uri relevante. Fara ghilimele interioare.",\n'
-    '  "image_prompt": "A detailed English prompt for DALL-E 3 to generate a stunning, '
-    'photorealistic nature photograph related to the topic. Specify: subject, environment, '
-    'lighting (golden hour/soft light/etc), style (macro/wide/portrait), mood. '
-    'Always end with: professional nature photography, 4:5 portrait, no text, no watermark."\n'
+    '  "image_prompt": "A detailed English prompt for gpt-image-1. The photograph MUST clearly show '
+    '{topic} as the main subject filling the frame — unmistakable and accurate. Specify: exact subject, '
+    'environment, lighting, camera angle. Do NOT show unrelated animals or objects. '
+    'End with: professional nature photography, 4:5 portrait, no text, no watermark."\n'
     "}}"
 )
 

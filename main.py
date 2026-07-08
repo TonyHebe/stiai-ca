@@ -48,6 +48,7 @@ PAGE_ID       = os.getenv("FACEBOOK_PAGE_ID", "")
 ACCESS_TOKEN  = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN", "")
 UNSPLASH_KEY  = os.getenv("UNSPLASH_ACCESS_KEY", "")
 OPENAI_KEY    = os.getenv("OPENAI_API_KEY", "")
+FORCE_REGENERATE_IMAGE = os.getenv("FORCE_REGENERATE_IMAGE", "").lower() in ("1", "true", "yes")
 MAX_DELAY     = int(os.getenv("MAX_RANDOM_DELAY_SECONDS", "3600"))
 
 # Auto-generate new content when fewer than this many unposted entries remain
@@ -153,20 +154,29 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
 
 # ── Background image resolution ──────────────────────────────────────────────
 
-def _generate_background_with_openai(curiosity: dict) -> str | None:
+def _generate_background_with_openai(curiosity: dict, force: bool = False) -> str | None:
     """Generate and save a background image when missing locally."""
     if not OPENAI_KEY:
         return None
+    title = curiosity.get("title", "nature")
     prompt = curiosity.get("image_prompt") or (
-        f"A stunning photorealistic nature photograph related to {curiosity.get('title', 'nature')}. "
-        f"{curiosity.get('image_keywords', '')}. golden hour lighting, professional nature photography, "
-        "4:5 portrait, no text, no watermark."
+        f"A stunning photorealistic close-up photograph of {title} as the clear main subject. "
+        f"{curiosity.get('image_keywords', '')}. The subject must be unmistakable and centered. "
+        "golden hour lighting, professional nature photography, 4:5 portrait, no text, no watermark."
     )
+    # Ensure the subject is explicit even when image_prompt exists
+    if title.lower() not in prompt.lower():
+        prompt = f"Main subject: {title}. {prompt}"
+
     image_name = curiosity.get("image_file") or f"{curiosity['id']}.jpg"
     save_path = IMAGES_DIR / image_name
-    if save_path.exists():
+    if save_path.exists() and not force:
         return str(save_path)
-    print(f"[main] Generating missing image via OpenAI: {image_name}")
+    if save_path.exists() and force:
+        save_path.unlink()
+        print(f"[main] Regenerating image (force): {image_name}")
+    else:
+        print(f"[main] Generating image via OpenAI: {image_name}")
     try:
         from openai import OpenAI
         import content_generator
@@ -180,26 +190,30 @@ def _generate_background_with_openai(curiosity: dict) -> str | None:
 def resolve_background(curiosity: dict) -> str:
     """
     Returns a local path to a background image for *curiosity*.
-
-    Priority:
-      1. Explicit local file listed in curiosity["image_file"]
-      2. Auto-cached download from Unsplash (requires UNSPLASH_ACCESS_KEY)
-      3. Any *.jpg / *.jpeg / *.png in assets/images/ (random pick)
+    Always prefers a topic-matched AI image. Never uses random unrelated photos.
     """
-    # 1. Explicit local file
+    force = FORCE_REGENERATE_IMAGE
+
+    # 1. Regenerate fresh image when forced (cloud default) or when file missing
+    if force or not (curiosity.get("image_file") and (IMAGES_DIR / curiosity["image_file"]).exists()):
+        generated = _generate_background_with_openai(curiosity, force=force)
+        if generated:
+            return generated
+
+    # 2. Use existing local file if present and not forcing
     if curiosity.get("image_file"):
         local = IMAGES_DIR / curiosity["image_file"]
         if local.exists():
             return str(local)
-        print(f"[main] Warning: image_file '{curiosity['image_file']}' not found, falling back.")
-        generated = _generate_background_with_openai(curiosity)
+        print(f"[main] image_file '{curiosity['image_file']}' not found — generating...")
+        generated = _generate_background_with_openai(curiosity, force=True)
         if generated:
             return generated
 
-    # 2. Cached Unsplash download
+    # 3. Unsplash fallback (keyword-matched)
     cache_name = f"bg_{curiosity['id']}.jpg"
     cache_path = IMAGES_DIR / cache_name
-    if cache_path.exists():
+    if cache_path.exists() and not force:
         return str(cache_path)
 
     if UNSPLASH_KEY and curiosity.get("image_keywords"):
@@ -213,21 +227,14 @@ def resolve_background(curiosity: dict) -> str:
         except Exception as exc:
             print(f"[main] Unsplash download failed: {exc}")
 
-    # 3. Random local fallback
-    candidates = list(IMAGES_DIR.glob("*.jpg")) + list(IMAGES_DIR.glob("*.jpeg")) + list(IMAGES_DIR.glob("*.png"))
-    if candidates:
-        chosen = random.choice(candidates)
-        print(f"[main] Using random local background: {chosen.name}")
-        return str(chosen)
-
-    # 4. Generate with OpenAI when running in the cloud without local images
-    generated = _generate_background_with_openai(curiosity)
+    # 4. Last resort: generate with OpenAI
+    generated = _generate_background_with_openai(curiosity, force=True)
     if generated:
         return generated
 
     raise FileNotFoundError(
-        "No background image available. Either set UNSPLASH_ACCESS_KEY in .env or "
-        f"place a photo in {IMAGES_DIR}/"
+        f"No background image for '{curiosity.get('title')}'. "
+        "Set OPENAI_API_KEY to auto-generate matching images."
     )
 
 
