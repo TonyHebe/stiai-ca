@@ -47,6 +47,9 @@ jobs:
           echo "MAX_RANDOM_DELAY_SECONDS=0" >> .env
           echo "FORCE_REGENERATE_IMAGE=true" >> .env
 
+      - name: Sync latest state
+        run: git pull --rebase origin master
+
       - name: Post to Facebook
         run: python main.py --no-delay
 
@@ -55,10 +58,20 @@ jobs:
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
           git add content/curiosities.json posted/posted_log.json
-          if ! git diff --staged --quiet; then
-            git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git pull --rebase origin master
-            git push origin master
-          else
+          if git diff --staged --quiet; then
             echo "No state changes to save."
+            exit 0
           fi
+          git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin master
+            git rebase origin/master || git rebase --abort
+            if git push origin master; then
+              echo "State saved successfully."
+              exit 0
+            fi
+            echo "Push attempt ${attempt} failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "ERROR: Failed to push state after 5 attempts."
+          exit 1
