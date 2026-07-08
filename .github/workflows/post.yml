@@ -5,18 +5,17 @@ on:
   repository_dispatch:
     types: [cron-post]
 
+permissions:
+  contents: write
+
 jobs:
   post:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -27,30 +26,24 @@ jobs:
         run: python setup_project.py
 
       - name: Random delay (8-42 min)
-        run: python -c "import random,time; d=random.randint(480,2520); print(f'Random delay: {d}s ({d//60}m {d%60}s)'); time.sleep(d)"
+        run: python -c "import random,time; d=random.randint(480,2520); print('Delay', d, 'seconds'); time.sleep(d)"
 
-      - name: Create .env from secrets
-        env:
-          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
-          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Create env file
         run: |
-          cat > .env << EOF
-          FACEBOOK_PAGE_ID=${FACEBOOK_PAGE_ID}
-          FACEBOOK_PAGE_ACCESS_TOKEN=${FACEBOOK_PAGE_ACCESS_TOKEN}
-          OPENAI_API_KEY=${OPENAI_API_KEY}
-          OPENAI_MODEL=gpt-4o-mini
-          LOW_CONTENT_THRESHOLD=4
-          GENERATE_BATCH_SIZE=8
-          MAX_POSTS_PER_DAY=7
-          TIMEZONE=Europe/Bucharest
-          MAX_RANDOM_DELAY_SECONDS=0
-          EOF
+          echo "FACEBOOK_PAGE_ID=${{ secrets.FACEBOOK_PAGE_ID }}" >> .env
+          echo "FACEBOOK_PAGE_ACCESS_TOKEN=${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "OPENAI_MODEL=gpt-4o-mini" >> .env
+          echo "LOW_CONTENT_THRESHOLD=4" >> .env
+          echo "GENERATE_BATCH_SIZE=8" >> .env
+          echo "MAX_POSTS_PER_DAY=7" >> .env
+          echo "TIMEZONE=Europe/Bucharest" >> .env
+          echo "MAX_RANDOM_DELAY_SECONDS=0" >> .env
 
       - name: Post to Facebook
         run: python main.py --no-delay
 
-      - name: Save state back to GitHub
+      - name: Save state
         run: |
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
