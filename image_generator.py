@@ -19,15 +19,15 @@ TITLE_COLOR   = "#F5C518"   # Gold/yellow — matches the example style
 BODY_COLOR    = "#FFFFFF"
 SHADOW_COLOR  = (0, 0, 0, 160)
 
-GRADIENT_START_RATIO  = 0.38   # Gradient begins at 38% from top
-SOLID_START_RATIO     = 0.58   # Fully opaque from here down (covers any existing text)
-GRADIENT_MAX_ALPHA    = 255    # Full black at bottom
+GRADIENT_START_RATIO  = 0.28   # More room for longer text block
+SOLID_START_RATIO     = 0.48   # Solid black covers bottom half
+GRADIENT_MAX_ALPHA    = 255
 
-TITLE_FONT_SIZE = 88
-BODY_FONT_SIZE  = 36
-LINE_SPACING    = 14          # Extra px between body lines
-SIDE_PADDING    = 80          # Horizontal padding for text
-MAX_BODY_LINES  = 6           # Truncate if too many lines
+TITLE_FONT_SIZE = 102
+BODY_FONT_SIZE  = 44
+LINE_SPACING    = 10
+SIDE_PADDING    = 70
+MAX_BODY_LINES  = 14          # Fits 5-6 sentences after wrapping
 
 
 # ── Font helpers ─────────────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ def generate_post_image(
     Args:
         background_path: Path to the source photo.
         title:           Large heading text (e.g. "Margareta").
-        image_text:      Short 1–3 sentence curiosity shown on the image.
+        image_text:      5-6 sentences shown ON the image (detailed curiosity teaser).
         output_path:     Where to save the generated JPEG.
 
     Returns:

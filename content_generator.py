@@ -3,7 +3,7 @@ content_generator.py
 Full AI pipeline for Stiai Ca?:
   1. GPT-4o-mini picks a topic and writes:
        - title           : 1-3 word heading
-       - image_text      : 2 punchy sentences that appear ON the image
+       - image_text      : 5-6 sentences that appear ON the image
        - caption         : full post text with hashtags
        - image_prompt    : detailed DALL-E 3 prompt for the background photo
   2. DALL-E 3 generates a beautiful photo matching the curiosity
@@ -58,10 +58,13 @@ USER_PROMPT_TEMPLATE = (
     "Returneaza EXCLUSIV un obiect JSON valid cu exact aceste campuri (fara text in afara JSON-ului):\n\n"
     "{{\n"
     '  "title": "Numele subiectului, 1-3 cuvinte, ex: Margareta",\n'
-    '  "image_text": "Exact 2 propozitii scurte si fascinante care vor aparea pe imagine. '
-    'Max 200 caractere total. Cel mai interesant fapt, formulat captivant. Fara ghilimele interioare.",\n'
-    '  "caption": "Textul complet al postarii Facebook. 3-5 paragrafe de 3-4 propozitii. '
-    'Informatii corecte si interesante. La final adauga 5-7 hashtag-uri. Fara ghilimele interioare.",\n'
+    '  "image_text": "Exact 5-6 propozitii fascinante care vor aparea pe imagine. '
+    'Text detaliat, usor de citit, cu fapte interesante despre subiect. '
+    'Intre 400 si 550 caractere. Fara ghilimele interioare.",\n'
+    '  "caption": "Textul complet al postarii Facebook. 6-8 paragrafe, fiecare cu 4-5 propozitii. '
+    'Informatii corecte, detaliate, captivante — ca un mini-articol educational. '
+    'Include context, fapte stiintifice, exemple si de ce e important. '
+    'La final adauga 7-10 hashtag-uri relevante. Fara ghilimele interioare.",\n'
     '  "image_prompt": "A detailed English prompt for DALL-E 3 to generate a stunning, '
     'photorealistic nature photograph related to the topic. Specify: subject, environment, '
     'lighting (golden hour/soft light/etc), style (macro/wide/portrait), mood. '
@@ -119,7 +122,7 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
             {"role": "user",   "content": USER_PROMPT_TEMPLATE.format(topic=topic)},
         ],
         temperature=0.85,
-        max_tokens=1000,
+        max_tokens=1800,
         response_format={"type": "json_object"},
     )
 
@@ -137,9 +140,9 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
     if missing:
         raise ValueError(f"GPT response missing fields: {missing}")
 
-    # Safety: trim image_text
-    if len(data["image_text"]) > 220:
-        data["image_text"] = data["image_text"][:217] + "..."
+    # Safety: trim image_text only if extremely long
+    if len(data["image_text"]) > 580:
+        data["image_text"] = data["image_text"][:577] + "..."
 
     return data
 
