@@ -153,6 +153,30 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
 
 # ── Background image resolution ──────────────────────────────────────────────
 
+def _generate_background_with_openai(curiosity: dict) -> str | None:
+    """Generate and save a background image when missing locally."""
+    if not OPENAI_KEY:
+        return None
+    prompt = curiosity.get("image_prompt") or (
+        f"A stunning photorealistic nature photograph related to {curiosity.get('title', 'nature')}. "
+        f"{curiosity.get('image_keywords', '')}. golden hour lighting, professional nature photography, "
+        "4:5 portrait, no text, no watermark."
+    )
+    image_name = curiosity.get("image_file") or f"{curiosity['id']}.jpg"
+    save_path = IMAGES_DIR / image_name
+    if save_path.exists():
+        return str(save_path)
+    print(f"[main] Generating missing image via OpenAI: {image_name}")
+    try:
+        from openai import OpenAI
+        import content_generator
+        client = OpenAI(api_key=OPENAI_KEY)
+        return content_generator.dalle_generate(prompt, save_path, client)
+    except Exception as exc:
+        print(f"[main] OpenAI image generation failed: {exc}")
+        return None
+
+
 def resolve_background(curiosity: dict) -> str:
     """
     Returns a local path to a background image for *curiosity*.
@@ -168,6 +192,9 @@ def resolve_background(curiosity: dict) -> str:
         if local.exists():
             return str(local)
         print(f"[main] Warning: image_file '{curiosity['image_file']}' not found, falling back.")
+        generated = _generate_background_with_openai(curiosity)
+        if generated:
+            return generated
 
     # 2. Cached Unsplash download
     cache_name = f"bg_{curiosity['id']}.jpg"
@@ -192,6 +219,11 @@ def resolve_background(curiosity: dict) -> str:
         chosen = random.choice(candidates)
         print(f"[main] Using random local background: {chosen.name}")
         return str(chosen)
+
+    # 4. Generate with OpenAI when running in the cloud without local images
+    generated = _generate_background_with_openai(curiosity)
+    if generated:
+        return generated
 
     raise FileNotFoundError(
         "No background image available. Either set UNSPLASH_ACCESS_KEY in .env or "
