@@ -19,15 +19,15 @@ TITLE_COLOR   = "#F5C518"   # Gold/yellow — matches the example style
 BODY_COLOR    = "#FFFFFF"
 SHADOW_COLOR  = (0, 0, 0, 160)
 
-GRADIENT_START_RATIO  = 0.28   # More room for longer text block
-SOLID_START_RATIO     = 0.48   # Solid black covers bottom half
+GRADIENT_START_RATIO  = 0.22   # More room for longer text block
+SOLID_START_RATIO     = 0.44   # Solid black covers bottom half
 GRADIENT_MAX_ALPHA    = 255
 
-TITLE_FONT_SIZE = 102
-BODY_FONT_SIZE  = 44
-LINE_SPACING    = 10
-SIDE_PADDING    = 70
-MAX_BODY_LINES  = 14          # Fits 5-6 sentences after wrapping
+TITLE_FONT_SIZE = 118
+BODY_FONT_SIZE  = 52
+LINE_SPACING    = 12
+SIDE_PADDING    = 60
+MAX_BODY_LINES  = 16          # Fits 5-6 sentences after wrapping
 
 
 # ── Font helpers ─────────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ def _draw_text_with_shadow(
     text: str,
     font: ImageFont.FreeTypeFont,
     fill: str,
-    shadow_offset: int = 2,
+    shadow_offset: int = 3,
 ) -> None:
     x, y = xy
     draw.text((x + shadow_offset, y + shadow_offset), text, font=font,
@@ -216,8 +216,8 @@ def generate_post_image(
     total_h = title_block_h + gap_title_body + body_block_h
 
     # Vertical centering inside the bottom text area
-    text_area_top = int(TARGET_H * (GRADIENT_START_RATIO + 0.10))
-    text_area_h   = TARGET_H - text_area_top - 60
+    text_area_top = int(TARGET_H * (GRADIENT_START_RATIO + 0.06))
+    text_area_h   = TARGET_H - text_area_top - 40
     start_y = text_area_top + max(0, (text_area_h - total_h) // 2)
 
     cx = TARGET_W // 2  # horizontal center

@@ -58,13 +58,15 @@ USER_PROMPT_TEMPLATE = (
     "Returneaza EXCLUSIV un obiect JSON valid cu exact aceste campuri (fara text in afara JSON-ului):\n\n"
     "{{\n"
     '  "title": "Numele subiectului, 1-3 cuvinte, ex: Margareta",\n'
-    '  "image_text": "Exact 5-6 propozitii fascinante care vor aparea pe imagine. '
-    'Text detaliat, usor de citit, cu fapte interesante despre subiect. '
-    'Intre 400 si 550 caractere. Fara ghilimele interioare.",\n'
-    '  "caption": "Textul complet al postarii Facebook. 6-8 paragrafe, fiecare cu 4-5 propozitii. '
-    'Informatii corecte, detaliate, captivante — ca un mini-articol educational. '
-    'Include context, fapte stiintifice, exemple si de ce e important. '
-    'La final adauga 7-10 hashtag-uri relevante. Fara ghilimele interioare.",\n'
+    '  "image_text": "Exact 5-6 propozitii complete care vor aparea pe imagine. '
+    'Fiecare propozitie trebuie sa aiba 12-20 cuvinte. Text detaliat, captivant, '
+    'cu fapte stiintifice concrete despre subiect. Minim 450 caractere, maxim 650. '
+    'NU scrie doar 2-3 propozitii scurte. Fara ghilimele interioare.",\n'
+    '  "caption": "Textul complet al postarii Facebook — un mini-articol educational. '
+    'Scrie 8-10 paragrafe, fiecare cu 4-6 propozitii (minim 800 cuvinte total). '
+    'Include: introducere captivanta, context istoric/stiintific, fapte detaliate, '
+    'exemple concrete din Romania sau lume, de ce conteaza, curiozitati bonus. '
+    'La final adauga 8-12 hashtag-uri relevante. Fara ghilimele interioare.",\n'
     '  "image_prompt": "A detailed English prompt for DALL-E 3 to generate a stunning, '
     'photorealistic nature photograph related to the topic. Specify: subject, environment, '
     'lighting (golden hour/soft light/etc), style (macro/wide/portrait), mood. '
@@ -122,7 +124,7 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
             {"role": "user",   "content": USER_PROMPT_TEMPLATE.format(topic=topic)},
         ],
         temperature=0.85,
-        max_tokens=1800,
+        max_tokens=2500,
         response_format={"type": "json_object"},
     )
 
@@ -141,8 +143,8 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
         raise ValueError(f"GPT response missing fields: {missing}")
 
     # Safety: trim image_text only if extremely long
-    if len(data["image_text"]) > 580:
-        data["image_text"] = data["image_text"][:577] + "..."
+    if len(data["image_text"]) > 680:
+        data["image_text"] = data["image_text"][:677] + "..."
 
     return data
 
