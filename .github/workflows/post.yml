@@ -8,12 +8,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: stiai-ca-post
+  cancel-in-progress: false
+
 jobs:
   post:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -47,6 +53,11 @@ jobs:
         run: |
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
-          git add content/curiosities.json posted/posted_log.json assets/images/ || true
-          git diff --staged --quiet || git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push
+          git add content/curiosities.json posted/posted_log.json
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git pull --rebase origin master
+            git push origin master
+          else
+            echo "No state changes to save."
+          fi
