@@ -96,7 +96,7 @@
     "caption": "Parcul Național Retezat este cunoscut pentru peisajele sale spectaculoase și biodiversitatea unică. Acesta găzduiește peste 1,200 de specii de plante, dintre care multe sunt endemice și protejate. Vârful Retezat, cu înălțimea sa de 2,509 metri, este un loc de pelerinaj pentru iubitorii de natură și alpinism. Această zonă montană oferă nu doar priveliști impresionante, ci și o oportunitate rară de a observa fauna sălbatică, inclusiv urși, lupi și capre negre. Descoperă magia Retezatului, un loc unde natura își arată cele mai frumoase forme! #Retezat #Natură #Biodiversitate #ParcNațional #Conservare #Călătorii #România",
     "image_prompt": "A breathtaking view of the Retezat Mountains during golden hour, showcasing the jagged peaks and lush green valleys. The scene captures a vibrant array of wildflowers in the foreground, with a serene lake reflecting the mountains in the background. The lighting enhances the natural beauty, evoking a sense of tranquility and wonder. professional nature photography, 4:5 portrait, no text, no watermark.",
     "image_file": "retezatul-001.jpg",
-    "posted": false
+    "posted": true
   },
   {
     "id": "floarea-soarelui-001",
@@ -105,7 +105,7 @@
     "caption": "Floarea-Soarelui, cu numele său științific Helianthus annuus, este cunoscută pentru capacitatea sa uimitoare de a se orienta după soare, un fenomen numit heliotropism. Această plantă nu doar că aduce o paletă vibrantă de culori în natură, dar este și o sursă importantă de hrană, ulei și semințe nutritive. Pe lângă beneficiile economice, floarea-soarelui joacă un rol important în ecosisteme, atrăgând polenizatori precum albinele. Te-ai întrebat vreodată de ce floarea-soarelui își schimbă poziția pe parcursul zilei? Aceasta face parte dintr-un proces fascinant de adaptare la lumină, care îi permite să maximizeze fotosinteza. #FloareaSoarelui #Curiozitati #Natura #Ecosisteme #Incredibil #Heliotropism #Plante",
     "image_prompt": "A stunning, photorealistic image of a sunflower field during golden hour, showcasing vibrant yellow sunflowers turning towards the sun, with soft light enhancing the colors. The mood is uplifting and cheerful, capturing the essence of nature's beauty. professional nature photography, 4:5 portrait, no text, no watermark.",
     "image_file": "floarea-soarelui-001.jpg",
-    "posted": false
+    "posted": true
   },
   {
     "id": "liliacul-001",
@@ -114,7 +114,7 @@
     "caption": "Știai că liliacii sunt singurele mamifere capabile să zboare activ? Aceste creaturi nocturne au un simț al orientării excepțional, bazat pe ecoul produs de sunetele pe care le emit. Această abilitate, numită ecolocație, le permite să vâneze insecte în întuneric, făcându-i vânători foarte eficienți. Liliacii sunt, de asemenea, esențiali pentru ecosistem, contribuind la polenizarea plantelor și la dispersarea semințelor. În plus, multe specii de liliaci sunt amenințate de pierderea habitatului și de boli, ceea ce face conservarea lor deosebit de importantă. Adoptați măsuri pentru a proteja aceste minunate ființe zburătoare! #liliac #mamifere #ecolocație #natură #conservare #biodiversitate #curiozități",
     "image_prompt": "A stunning photorealistic image of a bat in flight, set in a serene twilight forest environment. The lighting is soft and warm, capturing the magic of dusk. The mood is tranquil and slightly mysterious, showcasing the bat's delicate wings against the fading light. professional nature photography, 4:5 portrait, no text, no watermark.",
     "image_file": "liliacul-001.jpg",
-    "posted": false
+    "posted": true
   },
   {
     "id": "salamandra-p-tat-001",
@@ -123,6 +123,78 @@
     "caption": "Salamandra Pătată, un uimitor exemplu de adaptabilitate în natură, este cunoscută pentru pielea sa colorată, care variază de la galben la portocaliu, presărată cu pete negre. Această colorare nu este doar pentru a impresiona, ci servește ca un avertisment pentru prădători: este toxică! Aceste creaturi fascinante trăiesc adesea în păduri umede și sunt excelente indicatori ai sănătății mediului, având nevoie de apă curată pentru a supraviețui. Salamandrele sunt, de asemenea, capabile să se regenereze, având abilitatea de a-și regenera membrele pierdute, ceea ce le face cu adevărat un miracol al naturii. Îngrijirea mediului înconjurător este esențială pentru a le proteja habitatul. #SalamandraPătată #Biodiversitate #NaturăFascinantă #Conservare #Animale #Curiozități #Ecologie",
     "image_prompt": "A photorealistic image of a Spotted Salamander sitting on a mossy log in a lush green forest. The lighting is soft and warm, capturing the golden hour glow. The focus is on the intricate patterns of its skin, showcasing vibrant yellow and black spots. The mood is serene and enchanting. professional nature photography, 4:5 portrait, no text, no watermark.",
     "image_file": "salamandra-p-tat-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "ploaia-de-piatr-001",
+    "title": "Ploaia de Piatră",
+    "image_text": "Grindina poate avea o dimensiune de până la 15 cm! Aceasta se formează în nori foarte puternici.",
+    "caption": "Ploaia de piatră, cunoscută sub numele de grindină, reprezintă un fenomen meteorologic fascinant. Aceasta apare atunci când cristalele de gheață se formează în nori puternici și sunt împinse în sus, acumulând straturi de apă care se transformă în gheață. Când greutatea devine prea mare, cristalele cad pe pământ sub formă de bile de gheață, uneori uriașe.\n\nDimensiunea grindinei poate varia de la câțiva milimetri la câțiva centimetri, iar în cazuri rare poate ajunge chiar la 15 cm în diametru! Ceea ce o face și mai interesantă este faptul că aceste cristale pot cauza pagube semnificative culturilor agricole, mașinilor și structurilor.\n\nFenomenul este mai frecvent în timpul verii, când condițiile de instabilitate atmosferică sunt cele mai ridicate. Deși grindina poate părea periculoasă, este important să ne amintim că face parte din ciclul natural al vremii și contribuie la echilibrul ecosistemului. #grindina #ploaiedepiatra #fenomene #meteorologie #natura #stiinta #curiozitati",
+    "image_prompt": "A stunning photorealistic image of hailstones falling from a dark storm cloud, with a blurred green landscape below. The lighting is dramatic, capturing the intensity of the storm, with soft light illuminating the hailstones. The mood is dynamic and powerful, showcasing nature's force. professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "ploaia-de-piatr-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "gheba-001",
+    "title": "Gheba",
+    "image_text": "Gheba, ciuperca misterioasă care adoră pădurile! Descoperă cum contribuie la ecosistemul natural.",
+    "caption": "Gheba, cunoscută științific sub numele de Armillaria, este o ciupercă fascinantă care se dezvoltă adesea în păduri umede. Aceste ciuperci sunt nu doar o sursă de hrană pentru diverse animale, ci și un actor esențial în sănătatea ecosistemelor. Ele se hrănesc cu lemnul mort și contribuie la descompunerea materiei organice, întărind astfel solul și ajutând la regenerarea acestuia.\nUn aspect surprinzător al ghebei este că aceasta formează rețele subterane extinse de miceliu, care pot acoperi zeci sau chiar sute de hectare. Aceste rețele interconectează diferite plante, permițându-le să comunice și să împărtășească resursele. Deși unele specii de gheba pot fi comestibile, altele sunt toxice, așa că este important să le identifici corect.\nAșadar, data viitoare când te plimbi prin pădure, uită-te cu atenție la ciuperci! Ele pot fi mai mult decât un simplu element de peisaj. #Gheba #Armillaria #Ciuperci #Ecosistem #Natura #Curiozitate #Biologie",
+    "image_prompt": "A stunning, photorealistic image of Armillaria mushrooms growing on a forest floor, surrounded by lush green foliage and fallen leaves. The lighting is soft, capturing the golden hour glow, enhancing the colors of the mushrooms and the environment. The mood is serene and enchanting. professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "gheba-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "cicoarea-s-lbatic-001",
+    "title": "Cicoarea Sălbatică",
+    "image_text": "Cicoarea sălbatică, o comoară din natură! Rădăcinile sale sunt folosite de secole ca substitut pentru cafea.",
+    "caption": "Cicoarea sălbatică, cunoscută științific sub numele de Cichorium intybus, este o plantă perenă ce crește în mod natural prin păduri, câmpuri și margini de drum. Rădăcinile sale au fost folosite de-a lungul istoriei ca un substitut delicios pentru cafea, oferind o aromă distinctă și plină de caracter. Pe lângă utilizările culinare, cicoarea este apreciată și pentru beneficiile sale terapeutice, având proprietăți antiinflamatorii și digestive. Florile sale de un albastru strălucitor aduc o notă de frumusețe câmpurilor de primăvară, atrăgând polenizatori esențiali pentru ecosistem. Descoperă această plantă fascinantă, care îmbină utilitatea cu estetica naturii! #cicoare #natura #plante #curiozitati #medicament #flori #biologie",
+    "image_prompt": "A stunning, photorealistic image of wild chicory flowers in a sunny field during golden hour. The bright blue flowers contrast beautifully with the lush green grass, capturing the essence of spring. The mood is serene and vibrant, inviting viewers to appreciate the beauty of nature. professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "cicoarea-s-lbatic-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "hibernarea-animalelor-001",
+    "title": "Hibernarea Animalelor",
+    "image_text": "Unele animale pot să doarmă până la 6 luni! Hibernarea le ajută să supraviețuiască iernii aspre.",
+    "caption": "Știați că hibernarea nu este doar un simplu somn? În timpul acestui proces fascinant, animalele își reduc activitatea metabolică, ceea ce le permite să conserve energia. De exemplu, urșii pot pierde până la 30% din greutatea lor în timpul hibernării, hrănindu-se din grăsimea acumulată. Aceasta le permite să supraviețuiască fără hrană, chiar și în cele mai reci luni de iarnă. Hibernarea nu afectează doar urșii, ci și multe alte specii, cum ar fi veverițele, liliecii și broaștele. Așadar, data viitoare când vedeți un animal care pare că doarme, gândiți-vă la aventura fascinantă a hibernării! #hibernare #animale #natura #curiozitati #supravietuire #stiinta #biologie",
+    "image_prompt": "A group of hibernating bears cuddled together in a cozy cave, surrounded by snow and icicles, soft golden light filtering in from a small opening, macro style, tranquil mood. Professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "hibernarea-animalelor-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "polenizarea-001",
+    "title": "Polenizarea",
+    "image_text": "Fără polenizatori, planeta noastră ar fi mai săracă în diversitate. Flori, fructe și legume depind de munca acestor mici eroi.",
+    "caption": "Știați că polenizarea este esențială pentru viața pe Pământ? Aproximativ 75% dintre plantele cu flori depind de polenizatori, cum ar fi albinele, fluturii și păsările, pentru a-și reproduce semințele. Acești neobosiți lucrători nu doar că ajută la crearea hranei noastre, ci și la menținerea diversității ecosistemelor. Fără ei, multe specii de plante ar dispărea, afectând lanțurile trofice și biodiversitatea. Protejarea polenizatorilor este crucială pentru viitorul mediului nostru și al agriculturii. Fiecare gest mic contează, așa că haideți să ne implicăm în conservarea acestor eroi ai naturii! #Polenizare #Albine #Biodiversitate #Natură #Conservare #Ecosisteme #Sustenabilitate",
+    "image_prompt": "A vibrant field of flowers during golden hour with bees actively pollinating. The scene captures the intricate details of the flowers and bees, showcasing the harmony of nature. Soft light enhances the colors and textures, creating a magical atmosphere. The mood is lively and uplifting, reflecting the importance of pollinators. professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "polenizarea-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "fagul-comun-001",
+    "title": "Fagul Comun",
+    "image_text": "Fagul comun poate trăi peste 300 de ani! Această specie emite oxigen și îmbunătățește solul.",
+    "caption": "Fagul comun, cunoscut și sub numele de Fagus sylvatica, este un arbore impresionant care poate atinge înălțimi de până la 40 de metri. Acest gigant al pădurii nu doar că oferă umbră și frumusețe naturii, dar este și esențial pentru biodiversitate, fiind habitat pentru numeroase specii de plante și animale.\n\nUna dintre trăsăturile sale fascinante este durata sa de viață, care poate depăși 300 de ani, oferind un exemplu de stabilitate ecologică. Fagul este de asemenea important în combaterea schimbărilor climatice, deoarece o singură masă de fag poate absorbi o cantitate semnificativă de dioxid de carbon.\n\nFrunzele sale verzi strălucitoare devin aurii toamna, transformând pădurile în peisaje de vis. Prin fotosinteză, fagul contribuie la producerea oxigenului și la îmbunătățirea calității solului, oferind un mediu propice pentru alte plante să înflorească. \n#FagComun #Natura #Biodiversitate #Ecologie #ProtectiaMediului #Stiinta #Curiozitati",
+    "image_prompt": "A majestic beech tree in a serene forest during golden hour, the sun casting a warm glow on its lush green leaves. The scene captures the beauty of nature with a focus on the details of the bark and foliage, evoking a sense of tranquility and longevity. Professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "fagul-comun-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "tritonul-crestat-001",
+    "title": "Tritonul Crestat",
+    "image_text": "Tritonul Crestat poate ajunge până la 30 cm lungime. Este un maestru al camuflajului în mediul său acvatic!",
+    "caption": "Știai că tritonul crestat este una dintre cele mai fascinante specii de amfibieni? Acest animal, originar din regiunile umede ale Europei, se remarcă prin culorile sale vibrante și modelele distinctive de pe piele, care îi oferă un avantaj în camuflaj. Tritonul crestat își petrece majoritatea timpului în apă, dar își folosește și abilitățile de înot excepționale pentru a se deplasa pe uscat în căutarea hranei. În timpul sezonului de reproducere, masculii își etalează culorile strălucitoare pentru a atrage femelele, un adevărat spectacol al naturii. Acești tritoni sunt esențiali pentru ecosistemele acvatice, contribuind la controlul populațiilor de insecte. #TritonulCrestat #Amfibieni #NaturăFascinantă #Ecosistem #Curiozități #Biodiversitate #FaunaEuropei",
+    "image_prompt": "A beautiful photorealistic image of a Crested Newt in a lush wetland environment, showcasing its vibrant colors and unique patterns. The lighting is soft and warm, capturing the golden hour glow. The scene includes rich greenery and water reflections, emphasizing the triton's natural habitat. The mood is serene and captivating, highlighting the beauty of this amphibian. professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "tritonul-crestat-001.jpg",
+    "posted": false
+  },
+  {
+    "id": "viorele-001",
+    "title": "Viorele",
+    "image_text": "Viorelele sunt flori pline de mister! Culoarea lor vibrantă și parfumul îmbietor atrag insectele polenizatoare.",
+    "caption": "Viorelele, cunoscute și sub numele de violete, sunt plante perene fascinante, apreciate nu doar pentru frumusețea lor, ci și pentru proprietățile lor medicinale. Aceste flori delicate, cu petale de un violet intens sau alb, pot fi întâlnite în păduri umede și grădini, în special în zonele temperate ale lumii. Spre deosebire de alte flori, viorelele au un ciclu de viață interesant, având capacitatea de a înflori încă din primele zile ale primăverii, aducând culoare și optimism după iarna grea.\n\nPe lângă aspectul lor încântător, viorelele sunt și o resursă importantă pentru polenizatori, cum ar fi albinele. Aceste flori oferă nectar și polen, contribuind la sănătatea ecosistemului. De asemenea, frunzele și florile de viorele sunt comestibile și pot fi folosite în salate sau ca decor în preparatele culinare, oferind o notă de culoare și un gust ușor dulceag.\n\nDacă te plimbi prin pădure sau prin grădini, nu uita să îți îndrepți privirea spre aceste flori minunate! Ele sunt un simbol al frumuseții naturale și al renașterii în fiecare primăvară, amintindu-ne de puterea naturii. #Viorele #Natura #Flori #Primavara #Polenizatori #Frumusete #Curiozitati",
+    "image_prompt": "A stunning close-up of vibrant violet violets blooming in a lush green forest. Soft light during golden hour enhances their colors, creating a magical mood. Focus on the delicate petals and leaves, showcasing their beauty in detail. Professional nature photography, 4:5 portrait, no text, no watermark.",
+    "image_file": "viorele-001.jpg",
     "posted": false
   }
 ]
