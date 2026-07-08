@@ -14,7 +14,7 @@ You only need **ONE cron job**. It fires every ~3 hours, and the script:
 | Field | Value |
 |---|---|
 | **Title** | `StiaiCa` |
-| **URL** | `https://api.github.com/repos/TonyHebe/stiai-ca/dispatches` |
+| **URL** | `https://api.github.com/repos/TonyHebe/stiai-ca/actions/workflows/post.yml/dispatches` |
 | **Enable job** | ON |
 
 **Schedule → Custom → Crontab:**
@@ -48,7 +48,7 @@ Content-Type: application/json
 **Body:**
 
 ```json
-{"event_type": "cron-post"}
+{"ref": "master"}
 ```
 
 ---

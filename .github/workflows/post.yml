@@ -1,14 +1,7 @@
 name: Stiai Ca Auto-Poster
 
 on:
-  # Disabled — use cron-job.org instead (more reliable timing)
-  # schedule:
-  #   - cron: "0 6 * * *"
-  #   - cron: "0 10 * * *"
-  #   - cron: "0 16 * * *"
-
   workflow_dispatch:
-
   repository_dispatch:
     types: [cron-post]
 
@@ -33,7 +26,7 @@ jobs:
       - name: Download fonts
         run: python setup_project.py
 
-      - name: Random delay (8-42 min — avoids sharp posting times)
+      - name: Random delay (8-42 min)
         run: python -c "import random,time; d=random.randint(480,2520); print(f'Random delay: {d}s ({d//60}m {d%60}s)'); time.sleep(d)"
 
       - name: Create .env from secrets
