@@ -110,8 +110,10 @@ USER_PROMPT_TEMPLATE = (
     'exemple concrete din Romania sau lume, de ce conteaza, curiozitati bonus. '
     'La final adauga 8-12 hashtag-uri relevante. Fara ghilimele interioare.",\n'
     '  "image_prompt": "A detailed English prompt for gpt-image-1. The photograph MUST clearly show '
-    '{topic} as the main subject filling the frame — unmistakable and accurate. Specify: exact subject, '
-    'environment, lighting, camera angle. Do NOT show unrelated animals or objects. '
+    '{topic} as the main subject — unmistakable, large, and centered in the UPPER HALF of the frame. '
+    'The lower third should be simple blurred background (forest floor, sky, or water) for text overlay. '
+    'Close-up or medium shot, subject fully visible. Specify: exact subject, environment, lighting. '
+    'Do NOT show unrelated animals or objects. '
     'End with: professional nature photography, 4:5 portrait, no text, no watermark."\n'
     "}}"
 )

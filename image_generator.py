@@ -19,9 +19,10 @@ TITLE_COLOR   = "#F5C518"   # Gold/yellow — matches the example style
 BODY_COLOR    = "#FFFFFF"
 SHADOW_COLOR  = (0, 0, 0, 160)
 
-GRADIENT_START_RATIO  = 0.22   # More room for longer text block
-SOLID_START_RATIO     = 0.44   # Solid black covers bottom half
+GRADIENT_START_RATIO  = 0.55   # Keep top ~55% clear so the animal/plant stays visible
+SOLID_START_RATIO     = 0.68   # Solid black only on bottom third (for text)
 GRADIENT_MAX_ALPHA    = 255
+CROP_VERTICAL_BIAS    = 0.62   # Shift crop down so subject sits in upper half
 
 TITLE_FONT_SIZE = 96    # Max size; auto-shrinks for long titles
 TITLE_FONT_MIN  = 56
@@ -97,7 +98,7 @@ def _fit_title(title: str) -> tuple[list[str], ImageFont.FreeTypeFont]:
 # ── Image background helpers ─────────────────────────────────────────────────
 
 def _crop_center(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
-    """Center-crop + resize to exact target dimensions."""
+    """Crop + resize to 4:5, biasing upward so the subject stays above the text overlay."""
     src_w, src_h = img.size
     target_ratio = target_w / target_h
     src_ratio    = src_w / src_h
@@ -108,7 +109,7 @@ def _crop_center(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
         img = img.crop((offset, 0, offset + new_w, src_h))
     else:
         new_h = int(src_w / target_ratio)
-        offset = (src_h - new_h) // 2
+        offset = int((src_h - new_h) * CROP_VERTICAL_BIAS)
         img = img.crop((0, offset, src_w, offset + new_h))
 
     return img.resize((target_w, target_h), Image.LANCZOS)
@@ -256,9 +257,9 @@ def generate_post_image(
     gap_title_body = 28
     total_h = title_block_h + gap_title_body + body_block_h
 
-    # Vertical centering inside the bottom text area
-    text_area_top = int(TARGET_H * (GRADIENT_START_RATIO + 0.04))
-    text_area_h   = TARGET_H - text_area_top - 50
+    # Vertical centering inside the bottom text band (below the photo area)
+    text_area_top = int(TARGET_H * SOLID_START_RATIO) + 20
+    text_area_h   = TARGET_H - text_area_top - 40
     start_y = text_area_top + max(0, (text_area_h - total_h) // 2)
 
     cx = TARGET_W // 2  # horizontal center
