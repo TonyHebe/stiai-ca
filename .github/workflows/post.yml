@@ -65,7 +65,8 @@ jobs:
           git commit -m "Claim post slot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3 4 5; do
             git fetch origin master
-            git rebase origin/master || git rebase --abort
+            git restore assets/images/ output/ 2>/dev/null || true
+            git rebase --autostash origin/master || git rebase --abort
             if git push origin master; then
               echo "Claim pushed."
               exit 0
@@ -81,6 +82,7 @@ jobs:
         run: |
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
+          git restore assets/images/ output/ 2>/dev/null || true
           git add content/curiosities.json posted/posted_log.json content/posting_lock.json
           if git diff --staged --quiet; then
             echo "No state changes to save."
@@ -89,7 +91,8 @@ jobs:
           git commit -m "Auto-post $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3 4 5; do
             git fetch origin master
-            git rebase origin/master || git rebase --abort
+            git restore assets/images/ output/ 2>/dev/null || true
+            git rebase --autostash origin/master || git rebase --abort
             if git push origin master; then
               echo "State saved successfully."
               exit 0
