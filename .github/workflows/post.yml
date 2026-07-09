@@ -50,6 +50,30 @@ jobs:
       - name: Sync latest state
         run: git pull --rebase origin master
 
+      - name: Claim next topic
+        run: python main.py --claim
+
+      - name: Push claim lock
+        run: |
+          git config user.name "StiaiCa Bot"
+          git config user.email "bot@stiai-ca.local"
+          git add content/posting_lock.json
+          if git diff --staged --quiet; then
+            echo "No claim to push."
+            exit 0
+          fi
+          git commit -m "Claim post slot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin master
+            git rebase origin/master || git rebase --abort
+            if git push origin master; then
+              echo "Claim pushed."
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
       - name: Post to Facebook
         run: python main.py --no-delay
 
@@ -57,7 +81,7 @@ jobs:
         run: |
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
-          git add content/curiosities.json posted/posted_log.json
+          git add content/curiosities.json posted/posted_log.json content/posting_lock.json
           if git diff --staged --quiet; then
             echo "No state changes to save."
             exit 0

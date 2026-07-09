@@ -39,6 +39,7 @@ import image_generator
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR         = Path(__file__).parent
 CURIOSITIES_FILE = BASE_DIR / "content" / "curiosities.json"
+LOCK_FILE        = BASE_DIR / "content" / "posting_lock.json"
 IMAGES_DIR       = BASE_DIR / "assets" / "images"
 OUTPUT_DIR       = BASE_DIR / "output"
 POSTED_LOG       = BASE_DIR / "posted" / "posted_log.json"
@@ -57,6 +58,7 @@ LOW_CONTENT_THRESHOLD = int(os.getenv("LOW_CONTENT_THRESHOLD", "3"))
 GENERATE_BATCH_SIZE   = int(os.getenv("GENERATE_BATCH_SIZE", "5"))
 MAX_POSTS_PER_DAY     = int(os.getenv("MAX_POSTS_PER_DAY", "0"))  # 0 = unlimited
 TIMEZONE              = os.getenv("TIMEZONE", "Europe/Bucharest")
+LOCK_MAX_HOURS        = 6  # Skip locked topics — previous run likely posted but failed to save state
 
 
 # ── State helpers ─────────────────────────────────────────────────────────────
@@ -80,6 +82,66 @@ def append_posted_log(entry: dict) -> None:
     log.append(entry)
     with open(POSTED_LOG, "w", encoding="utf-8") as fh:
         json.dump(log, fh, ensure_ascii=False, indent=2)
+
+
+def load_posted_ids() -> set[str]:
+    if not POSTED_LOG.exists():
+        return set()
+    with open(POSTED_LOG, encoding="utf-8") as fh:
+        return {e["id"] for e in json.load(fh) if e.get("id")}
+
+
+def load_lock() -> dict | None:
+    if not LOCK_FILE.exists():
+        return None
+    try:
+        with open(LOCK_FILE, encoding="utf-8") as fh:
+            return json.load(fh)
+    except json.JSONDecodeError:
+        return None
+
+
+def write_lock(item_id: str) -> None:
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(LOCK_FILE, "w", encoding="utf-8") as fh:
+        json.dump({"id": item_id, "at": datetime.now().isoformat()}, fh, indent=2)
+
+
+def clear_lock() -> None:
+    if LOCK_FILE.exists():
+        LOCK_FILE.unlink()
+
+
+def lock_should_skip(item_id: str) -> bool:
+    """Skip topics claimed by a recent lock — avoids duplicate FB posts when git push failed."""
+    lock = load_lock()
+    if not lock or lock.get("id") != item_id:
+        return False
+    try:
+        at = datetime.fromisoformat(lock["at"])
+    except ValueError:
+        return True
+    age_hours = (datetime.now() - at).total_seconds() / 3600
+    return age_hours < LOCK_MAX_HOURS
+
+
+def sync_posted_from_log(curiosities: list[dict]) -> None:
+    posted_ids = load_posted_ids()
+    changed = False
+    for c in curiosities:
+        if c["id"] in posted_ids and not c.get("posted"):
+            c["posted"] = True
+            changed = True
+    if changed:
+        save_curiosities(curiosities)
+        print(f"[main] Synced posted flags from log ({len(posted_ids)} posted total)")
+
+
+def find_by_id(curiosities: list[dict], item_id: str) -> dict | None:
+    for c in curiosities:
+        if c["id"] == item_id:
+            return c
+    return None
 
 
 def posts_today() -> int:
@@ -115,11 +177,32 @@ def posts_today() -> int:
 
 
 def pick_next(curiosities: list[dict]) -> dict | None:
-    """Return the first unposted curiosity, or None if all are done."""
-    unposted = [c for c in curiosities if not c.get("posted")]
-    if not unposted:
-        return None
-    return unposted[0]
+    """Return the next unposted curiosity, skipping locked/recently-claimed topics."""
+    posted_ids = load_posted_ids()
+    for c in curiosities:
+        if c.get("posted") or c["id"] in posted_ids:
+            continue
+        if lock_should_skip(c["id"]):
+            print(
+                f"[main] Skipping [{c['id']}] — lock active "
+                "(previous run likely posted but failed to save state)"
+            )
+            continue
+        return c
+    return None
+
+
+def claim_next() -> None:
+    """Reserve the next topic on GitHub before posting — prevents duplicate FB posts."""
+    curiosities = load_curiosities()
+    sync_posted_from_log(curiosities)
+    curiosities = load_curiosities()
+    item = pick_next(curiosities)
+    if item is None:
+        print("[main] Nothing to claim.")
+        return
+    write_lock(item["id"])
+    print(f"[main] Claimed: [{item['id']}] {item['title']}")
 
 
 def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
@@ -276,11 +359,24 @@ def run(dry_run: bool = False) -> None:
             return
 
     curiosities = load_curiosities()
+    sync_posted_from_log(curiosities)
+    curiosities = load_curiosities()
 
     # Refill queue with AI-generated content when running low
     curiosities = maybe_refill_queue(curiosities)
 
-    item = pick_next(curiosities)
+    # Use claimed topic from posting_lock.json if present (set by --claim step)
+    item = None
+    lock = load_lock()
+    if lock and lock.get("id"):
+        item = find_by_id(curiosities, lock["id"])
+        if item and not item.get("posted") and item["id"] not in load_posted_ids():
+            print(f"[main] Using claimed: [{item['id']}] {item['title']}")
+
+    if not item or item.get("posted") or item["id"] in load_posted_ids():
+        item = pick_next(curiosities)
+        if item:
+            write_lock(item["id"])
 
     if item is None:
         print("[main] All curiosities have been posted. Add new entries to curiosities.json.")
@@ -334,6 +430,7 @@ def run(dry_run: bool = False) -> None:
         "fb_post_id":  result.get("post_id") or result.get("id"),
         "image_file":  img_name,
     })
+    clear_lock()
     print(f"[main] Done ✓  ({item['title']})")
 
 
@@ -344,11 +441,16 @@ def main() -> None:
     parser.add_argument("--no-delay",  action="store_true", help="Skip random pre-post delay")
     parser.add_argument("--dry-run",   action="store_true", help="Generate image only, do not post")
     parser.add_argument("--verify",    action="store_true", help="Verify Facebook credentials and exit")
+    parser.add_argument("--claim",     action="store_true", help="Claim next topic (write lock file, do not post)")
     args = parser.parse_args()
 
     if args.verify:
         ok = facebook_poster.verify_credentials(PAGE_ID, ACCESS_TOKEN)
         sys.exit(0 if ok else 1)
+
+    if args.claim:
+        claim_next()
+        return
 
     if not args.no_delay and MAX_DELAY > 0:
         delay = random.randint(0, MAX_DELAY)
