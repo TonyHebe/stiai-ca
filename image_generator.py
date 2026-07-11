@@ -19,17 +19,21 @@ TITLE_COLOR   = "#F5C518"   # Gold/yellow — matches the example style
 BODY_COLOR    = "#FFFFFF"
 SHADOW_COLOR  = (0, 0, 0, 160)
 
-GRADIENT_START_RATIO  = 0.55   # Keep top ~55% clear so the animal/plant stays visible
-SOLID_START_RATIO     = 0.68   # Solid black only on bottom third (for text)
+GRADIENT_START_RATIO  = 0.48   # Gradient begins mid-frame; subject stays in upper half
+SOLID_START_RATIO     = 0.58   # Bottom text band — sized to fit wrapped body copy
 GRADIENT_MAX_ALPHA    = 255
 CROP_VERTICAL_BIAS    = 0.62   # Shift crop down so subject sits in upper half
 
 TITLE_FONT_SIZE = 96    # Max size; auto-shrinks for long titles
 TITLE_FONT_MIN  = 56
 BODY_FONT_SIZE  = 42
+BODY_FONT_MIN   = 26
 LINE_SPACING    = 10
+LINE_SPACING_MIN = 4
 SIDE_PADDING    = 56
-MAX_BODY_LINES  = 18          # Fits 5-6 sentences after wrapping
+BOTTOM_PADDING  = 48
+TEXT_AREA_TOP_PAD = 16
+GAP_TITLE_BODY  = 24
 
 
 # ── Font helpers ─────────────────────────────────────────────────────────────
@@ -163,11 +167,23 @@ def _apply_gradient(img: Image.Image) -> Image.Image:
 
 # ── Text drawing ─────────────────────────────────────────────────────────────
 
-def _text_block_height(lines: list[str], body_font: ImageFont.FreeTypeFont) -> int:
-    """Total pixel height of all body text lines."""
-    _, _, _, lh = body_font.getbbox("Ag")
-    line_height = lh + LINE_SPACING
-    return len(lines) * line_height
+def _line_height(font: ImageFont.FreeTypeFont, spacing: int = LINE_SPACING) -> int:
+    """Pixel height of one text line including spacing below it."""
+    ascent, descent = font.getmetrics()
+    return ascent + descent + spacing
+
+
+def _title_block_height(lines: list[str], font: ImageFont.FreeTypeFont) -> int:
+    if not lines:
+        return 0
+    line_h = _line_height(font, spacing=8)
+    return len(lines) * line_h + 12
+
+
+def _body_block_height(lines: list[str], font: ImageFont.FreeTypeFont, spacing: int) -> int:
+    if not lines:
+        return 0
+    return len(lines) * _line_height(font, spacing)
 
 
 def _draw_text_with_shadow(
@@ -184,7 +200,11 @@ def _draw_text_with_shadow(
     draw.text((x, y), text, font=font, fill=fill, anchor="mt")
 
 
-def _wrap_body_text(text: str, body_font: ImageFont.FreeTypeFont) -> list[str]:
+def _wrap_body_text(
+    text: str,
+    body_font: ImageFont.FreeTypeFont,
+    max_lines: int | None = None,
+) -> list[str]:
     """
     Wrap text to fit within (TARGET_W - 2*SIDE_PADDING) pixels.
     Falls back to character-based wrapping if bbox is unavailable.
@@ -198,7 +218,7 @@ def _wrap_body_text(text: str, body_font: ImageFont.FreeTypeFont) -> list[str]:
         try:
             w = body_font.getlength(candidate)
         except AttributeError:
-            w = len(candidate) * (BODY_FONT_SIZE * 0.55)
+            w = len(candidate) * (body_font.size * 0.55)
 
         if w <= max_w:
             current = candidate
@@ -210,7 +230,62 @@ def _wrap_body_text(text: str, body_font: ImageFont.FreeTypeFont) -> list[str]:
     if current:
         lines.append(current)
 
-    return lines[:MAX_BODY_LINES]
+    if max_lines is not None and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        trimmed = lines[-1].rstrip(".,;:!? ")
+        lines[-1] = trimmed + "…"
+
+    return lines
+
+
+def _text_area_bounds() -> tuple[int, int]:
+    """Return (top, bottom) y-coordinates of the usable text band."""
+    top = int(TARGET_H * SOLID_START_RATIO) + TEXT_AREA_TOP_PAD
+    bottom = TARGET_H - BOTTOM_PADDING
+    return top, bottom
+
+
+def _fit_body_layout(
+    image_text: str,
+    title_lines: list[str],
+    title_font: ImageFont.FreeTypeFont,
+) -> tuple[list[str], ImageFont.FreeTypeFont, int]:
+    """
+    Pick body font size, line spacing, and line count so the full text block
+    fits inside the bottom overlay without clipping.
+    """
+    text_top, text_bottom = _text_area_bounds()
+    max_total_h = text_bottom - text_top
+    title_block_h = _title_block_height(title_lines, title_font)
+    max_body_h = max_total_h - title_block_h - GAP_TITLE_BODY
+
+    if max_body_h <= 0:
+        font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
+        return _wrap_body_text(image_text, font, max_lines=1), font, LINE_SPACING_MIN
+
+    best_lines: list[str] = []
+    best_font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
+    best_spacing = LINE_SPACING_MIN
+
+    for size in range(BODY_FONT_SIZE, BODY_FONT_MIN - 1, -2):
+        body_font = _load_font("Montserrat-Regular.ttf", size)
+        lines = _wrap_body_text(image_text, body_font)
+
+        for spacing in range(LINE_SPACING, LINE_SPACING_MIN - 1, -2):
+            block_h = _body_block_height(lines, body_font, spacing)
+            if block_h <= max_body_h:
+                return lines, body_font, spacing
+
+        best_lines, best_font, best_spacing = lines, body_font, LINE_SPACING_MIN
+
+    # Still too tall at minimum size — keep as many lines as fit, with ellipsis.
+    for max_lines in range(len(best_lines), 0, -1):
+        lines = _wrap_body_text(image_text, best_font, max_lines=max_lines)
+        if _body_block_height(lines, best_font, best_spacing) <= max_body_h:
+            return lines, best_font, best_spacing
+
+    font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
+    return _wrap_body_text(image_text, font, max_lines=1), font, LINE_SPACING_MIN
 
 
 # ── Main public function ──────────────────────────────────────────────────────
@@ -233,8 +308,11 @@ def generate_post_image(
     Returns:
         *output_path* on success.
     """
-    title_font, body_font = _get_fonts()
+    _, body_font = _get_fonts()
     title_lines, title_font = _fit_title(title)
+    body_lines, body_font, line_spacing = _fit_body_layout(
+        image_text, title_lines, title_font
+    )
 
     # Prepare background
     bg = Image.open(background_path).convert("RGB")
@@ -243,35 +321,26 @@ def generate_post_image(
 
     draw = ImageDraw.Draw(bg)
 
-    # Wrap body lines
-    body_lines = _wrap_body_text(image_text, body_font)
+    title_block_h = _title_block_height(title_lines, title_font)
+    body_block_h  = _body_block_height(body_lines, body_font, line_spacing)
+    total_h = title_block_h + GAP_TITLE_BODY + body_block_h
 
-    # Measure heights
-    _, _, _, title_lh = title_font.getbbox("Ag")
-    title_block_h = len(title_lines) * (title_lh + 8) + 12
-
-    _, _, _, body_lh = body_font.getbbox("Ag")
-    body_line_h   = body_lh + LINE_SPACING
-    body_block_h  = len(body_lines) * body_line_h
-
-    gap_title_body = 28
-    total_h = title_block_h + gap_title_body + body_block_h
-
-    # Vertical centering inside the bottom text band (below the photo area)
-    text_area_top = int(TARGET_H * SOLID_START_RATIO) + 20
-    text_area_h   = TARGET_H - text_area_top - 40
-    start_y = text_area_top + max(0, (text_area_h - total_h) // 2)
+    text_top, text_bottom = _text_area_bounds()
+    text_band_h = text_bottom - text_top
+    start_y = text_top + max(0, (text_band_h - total_h) // 2)
 
     cx = TARGET_W // 2  # horizontal center
+    title_line_h = _line_height(title_font, spacing=8)
 
     # Draw title (one or two lines, auto-sized)
     title_y = start_y
     for line in title_lines:
         _draw_text_with_shadow(draw, (cx, title_y), line, title_font, TITLE_COLOR)
-        title_y += title_lh + 8
+        title_y += title_line_h
 
     # Draw body lines
-    body_y = start_y + title_block_h + gap_title_body
+    body_y = start_y + title_block_h + GAP_TITLE_BODY
+    body_line_h = _line_height(body_font, spacing=line_spacing)
     for line in body_lines:
         _draw_text_with_shadow(draw, (cx, body_y), line, body_font, BODY_COLOR)
         body_y += body_line_h
