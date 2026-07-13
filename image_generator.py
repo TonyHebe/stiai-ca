@@ -19,17 +19,21 @@ TITLE_COLOR   = "#F5C518"   # Gold/yellow — matches the example style
 BODY_COLOR    = "#FFFFFF"
 SHADOW_COLOR  = (0, 0, 0, 160)
 
-GRADIENT_START_RATIO  = 0.55   # Keep top ~55% clear so the animal/plant stays visible
-SOLID_START_RATIO     = 0.68   # Solid black only on bottom third (for text)
+GRADIENT_START_RATIO  = 0.50   # Photo in top half; gradient begins at 50%
+SOLID_START_RATIO     = 0.56   # Solid black under text from 56% down
 GRADIENT_MAX_ALPHA    = 255
 CROP_VERTICAL_BIAS    = 0.62   # Shift crop down so subject sits in upper half
 
 TITLE_FONT_SIZE = 96    # Max size; auto-shrinks for long titles
 TITLE_FONT_MIN  = 56
-BODY_FONT_SIZE  = 42
-LINE_SPACING    = 10
+BODY_FONT_SIZE  = 40
+BODY_FONT_MIN   = 32
+LINE_SPACING    = 7
 SIDE_PADDING    = 56
-MAX_BODY_LINES  = 18          # Fits 5-6 sentences after wrapping
+MAX_BODY_LINES  = 14
+TEXT_BAND_TOP_PAD    = 24
+TEXT_BAND_BOTTOM_PAD = 88   # Safe margin for descenders (g, y, p)
+TEXT_FIT_MARGIN      = 12
 
 
 # ── Font helpers ─────────────────────────────────────────────────────────────
@@ -213,6 +217,57 @@ def _wrap_body_text(text: str, body_font: ImageFont.FreeTypeFont) -> list[str]:
     return lines[:MAX_BODY_LINES]
 
 
+def _measure_layout(
+    title_lines: list[str],
+    title_font: ImageFont.FreeTypeFont,
+    body_lines: list[str],
+    body_font: ImageFont.FreeTypeFont,
+) -> tuple[int, int, int, int]:
+    """Return (title_block_h, body_line_h, body_block_h, total_h)."""
+    _, _, _, title_lh = title_font.getbbox("Ag")
+    title_block_h = len(title_lines) * (title_lh + 8) + 12
+    _, _, _, body_lh = body_font.getbbox("Ag")
+    body_line_h = body_lh + LINE_SPACING
+    body_block_h = len(body_lines) * body_line_h
+    gap = 24
+    total_h = title_block_h + gap + body_block_h
+    return title_block_h, body_line_h, body_block_h, total_h
+
+
+def _fit_body_to_band(
+    image_text: str,
+    title_lines: list[str],
+    title_font: ImageFont.FreeTypeFont,
+    band_h: int,
+) -> tuple[list[str], ImageFont.FreeTypeFont, int, int, int, int]:
+    """Shrink body font until title + body fit inside the text band."""
+    for size in range(BODY_FONT_SIZE, BODY_FONT_MIN - 1, -2):
+        body_font = _load_font("Montserrat-Regular.ttf", size)
+        body_lines = _wrap_body_text(image_text, body_font)
+        title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
+            title_lines, title_font, body_lines, body_font
+        )
+        if total_h <= band_h - TEXT_FIT_MARGIN:
+            return body_lines, body_font, title_block_h, body_line_h, body_block_h, total_h
+
+    body_font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
+    body_lines = _wrap_body_text(image_text, body_font)
+    while len(body_lines) > 4:
+        title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
+            title_lines, title_font, body_lines, body_font
+        )
+        if total_h <= band_h - TEXT_FIT_MARGIN:
+            break
+        body_lines = body_lines[:-1]
+    if body_lines:
+        last = body_lines[-1].rstrip(".,; ")
+        body_lines[-1] = (last[: max(0, len(last) - 4)] + "...") if len(last) > 20 else last + "..."
+    title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
+        title_lines, title_font, body_lines, body_font
+    )
+    return body_lines, body_font, title_block_h, body_line_h, body_block_h, total_h
+
+
 # ── Main public function ──────────────────────────────────────────────────────
 
 def generate_post_image(
@@ -243,28 +298,28 @@ def generate_post_image(
 
     draw = ImageDraw.Draw(bg)
 
-    # Wrap body lines
-    body_lines = _wrap_body_text(image_text, body_font)
+    band_top = int(TARGET_H * GRADIENT_START_RATIO) + TEXT_BAND_TOP_PAD
+    band_bottom = TARGET_H - TEXT_BAND_BOTTOM_PAD
+    band_h = band_bottom - band_top
 
-    # Measure heights
-    _, _, _, title_lh = title_font.getbbox("Ag")
-    title_block_h = len(title_lines) * (title_lh + 8) + 12
+    body_lines, body_font, title_block_h, body_line_h, body_block_h, total_h = _fit_body_to_band(
+        image_text, title_lines, title_font, band_h
+    )
 
-    _, _, _, body_lh = body_font.getbbox("Ag")
-    body_line_h   = body_lh + LINE_SPACING
-    body_block_h  = len(body_lines) * body_line_h
+    gap_title_body = 24
+    if total_h >= band_h * 0.82:
+        start_y = band_top
+    else:
+        start_y = band_top + max(0, (band_h - total_h) // 5)
 
-    gap_title_body = 28
-    total_h = title_block_h + gap_title_body + body_block_h
-
-    # Vertical centering inside the bottom text band (below the photo area)
-    text_area_top = int(TARGET_H * SOLID_START_RATIO) + 20
-    text_area_h   = TARGET_H - text_area_top - 40
-    start_y = text_area_top + max(0, (text_area_h - total_h) // 2)
+    content_bottom = start_y + title_block_h + gap_title_body + len(body_lines) * body_line_h + 6
+    if content_bottom > band_bottom:
+        start_y = max(band_top, start_y - (content_bottom - band_bottom))
 
     cx = TARGET_W // 2  # horizontal center
 
     # Draw title (one or two lines, auto-sized)
+    _, _, _, title_lh = title_font.getbbox("Ag")
     title_y = start_y
     for line in title_lines:
         _draw_text_with_shadow(draw, (cx, title_y), line, title_font, TITLE_COLOR)
