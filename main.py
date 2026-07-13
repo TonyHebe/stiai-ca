@@ -236,22 +236,26 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
 
 
 def ensure_image_text(item: dict, curiosities: list[dict]) -> None:
-    """Expand legacy short image_text entries to 5-6 sentences before posting."""
+    """Rewrite image_text so it fits 5-6 short lines on the image."""
     if not OPENAI_KEY:
         return
     try:
         import content_generator
-        if not content_generator.image_text_is_short(item.get("image_text", "")):
+        current = item.get("image_text", "")
+        if not content_generator.image_text_needs_rewrite(current):
+            item["image_text"] = content_generator.clamp_image_text(current)
             return
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_KEY)
-        item["image_text"] = content_generator.expand_image_text(
-            item["title"], item.get("image_text", ""), client
+        item["image_text"] = content_generator.rewrite_image_text(
+            item["title"], current, client
         )
         save_curiosities(curiosities)
-        print(f"[main] Expanded image_text for: {item['title']}")
+        print(f"[main] Rewrote image_text for: {item['title']}")
     except Exception as exc:
-        print(f"[main] Could not expand image_text: {exc}")
+        print(f"[main] Could not rewrite image_text: {exc}")
+        import content_generator
+        item["image_text"] = content_generator.clamp_image_text(item.get("image_text", ""))
 
 
 # ── Background image resolution ──────────────────────────────────────────────

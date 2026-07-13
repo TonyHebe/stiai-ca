@@ -42,8 +42,11 @@ IMAGES_DIR       = BASE_DIR / "assets" / "images"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-MIN_IMAGE_TEXT_CHARS     = 400
-MIN_IMAGE_TEXT_SENTENCES = 5
+MIN_IMAGE_TEXT_CHARS     = 120
+MAX_IMAGE_TEXT_CHARS     = 280
+MIN_IMAGE_TEXT_SENTENCES = 3
+MAX_IMAGE_TEXT_SENTENCES = 5
+TARGET_IMAGE_TEXT_LINES  = 6
 
 
 def count_sentences(text: str) -> int:
@@ -52,12 +55,32 @@ def count_sentences(text: str) -> int:
 
 def image_text_is_short(text: str) -> bool:
     text = (text or "").strip()
-    return len(text) < MIN_IMAGE_TEXT_CHARS or count_sentences(text) < MIN_IMAGE_TEXT_SENTENCES
+    return (
+        len(text) < MIN_IMAGE_TEXT_CHARS
+        or count_sentences(text) < MIN_IMAGE_TEXT_SENTENCES
+    )
 
 
-def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
-    """Rewrite short on-image text into 5-6 full sentences."""
-    print(f"  [GPT] Expanding image_text for: {title} ...", flush=True)
+def image_text_is_long(text: str) -> bool:
+    text = (text or "").strip()
+    return len(text) > MAX_IMAGE_TEXT_CHARS or count_sentences(text) > MAX_IMAGE_TEXT_SENTENCES
+
+
+def image_text_needs_rewrite(text: str) -> bool:
+    return image_text_is_short(text) or image_text_is_long(text)
+
+
+def clamp_image_text(text: str) -> str:
+    text = (text or "").strip()
+    if len(text) <= MAX_IMAGE_TEXT_CHARS:
+        return text
+    trimmed = text[: MAX_IMAGE_TEXT_CHARS - 3].rsplit(" ", 1)[0]
+    return trimmed.rstrip(".,; ") + "..."
+
+
+def rewrite_image_text(title: str, current_text: str, client: OpenAI) -> str:
+    """Rewrite on-image text to 5-6 short lines (not a long paragraph)."""
+    print(f"  [GPT] Rewriting image_text for: {title} ...", flush=True)
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -65,24 +88,27 @@ def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
             {
                 "role": "user",
                 "content": (
-                    f"Rescrie textul pentru imagine despre {title}.\n"
-                    f"Text actual (prea scurt): {current_text}\n\n"
-                    "Returneaza EXCLUSIV JSON: "
-                    '{"image_text": "Exact 5-6 propozitii complete, fiecare 12-20 cuvinte, '
-                    "minim 450 caractere, maxim 650. Fapte stiintifice concrete. "
-                    'Fara ghilimele interioare."}'
+                    f"Rescrie textul scurt de pe imagine despre {title}.\n"
+                    f"Text actual: {current_text}\n\n"
+                    "Returneaza EXCLUSIV JSON:\n"
+                    '{"image_text": "4-5 propozitii SCURTE (8-12 cuvinte fiecare). '
+                    "Total 200-260 caractere, MAXIM 280. Textul trebuie sa incapa in "
+                    "5-6 randuri pe imagine — NU scrie paragrafe lungi. Fapte clare, "
+                    'captivante. Fara ghilimele interioare."}'
                 ),
             },
         ],
         temperature=0.8,
-        max_tokens=800,
+        max_tokens=400,
         response_format={"type": "json_object"},
     )
-    data = json.loads(resp.choices[0].message.content.strip())
-    text = data["image_text"].strip()
-    if len(text) > 680:
-        text = text[:677] + "..."
-    return text
+    text = json.loads(resp.choices[0].message.content.strip())["image_text"].strip()
+    return clamp_image_text(text)
+
+
+def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
+    """Backwards-compatible alias."""
+    return rewrite_image_text(title, current_text, client)
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
@@ -100,10 +126,9 @@ USER_PROMPT_TEMPLATE = (
     "Returneaza EXCLUSIV un obiect JSON valid cu exact aceste campuri (fara text in afara JSON-ului):\n\n"
     "{{\n"
     '  "title": "Numele subiectului, 1-3 cuvinte, ex: Margareta",\n'
-    '  "image_text": "Exact 5-6 propozitii complete care vor aparea pe imagine. '
-    'Fiecare propozitie trebuie sa aiba 12-20 cuvinte. Text detaliat, captivant, '
-    'cu fapte stiintifice concrete despre subiect. Minim 450 caractere, maxim 650. '
-    'NU scrie doar 2-3 propozitii scurte. Fara ghilimele interioare.",\n'
+    '  "image_text": "Text scurt pe imagine: 4-5 propozitii clare (8-12 cuvinte fiecare). '
+    'Total 200-260 caractere, MAXIM 280. Trebuie sa incapa in 5-6 randuri vizibile — '
+    'NU scrie paragrafe lungi. Fapte captivante despre subiect. Fara ghilimele interioare.",\n'
     '  "caption": "Textul complet al postarii Facebook — un mini-articol educational. '
     'Scrie 8-10 paragrafe, fiecare cu 4-6 propozitii (minim 800 cuvinte total). '
     'Include: introducere captivanta, context istoric/stiintific, fapte detaliate, '
@@ -191,10 +216,12 @@ def gpt_generate(topic: str, client: OpenAI) -> dict:
             f"image_text too short ({len(data['image_text'])} chars, "
             f"{count_sentences(data['image_text'])} sentences)"
         )
+    if image_text_is_long(data["image_text"]):
+        raise ValueError(
+            f"image_text too long ({len(data['image_text'])} chars) — max {MAX_IMAGE_TEXT_CHARS}"
+        )
 
-    # Safety: trim image_text only if extremely long
-    if len(data["image_text"]) > 680:
-        data["image_text"] = data["image_text"][:677] + "..."
+    data["image_text"] = clamp_image_text(data["image_text"])
 
     return data
 

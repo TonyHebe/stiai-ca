@@ -26,11 +26,11 @@ CROP_VERTICAL_BIAS    = 0.62   # Shift crop down so subject sits in upper half
 
 TITLE_FONT_SIZE = 96    # Max size; auto-shrinks for long titles
 TITLE_FONT_MIN  = 56
-BODY_FONT_SIZE  = 40
-BODY_FONT_MIN   = 32
-LINE_SPACING    = 7
+BODY_FONT_SIZE  = 48
+BODY_FONT_MIN   = 46
+LINE_SPACING    = 10
 SIDE_PADDING    = 56
-MAX_BODY_LINES  = 14
+MAX_BODY_LINES  = 6           # Hard cap: 5-6 visible lines under the title
 TEXT_BAND_TOP_PAD    = 24
 TEXT_BAND_BOTTOM_PAD = 88   # Safe margin for descenders (g, y, p)
 TEXT_FIT_MARGIN      = 12
@@ -234,37 +234,42 @@ def _measure_layout(
     return title_block_h, body_line_h, body_block_h, total_h
 
 
+def _truncate_to_max_lines(
+    text: str, body_font: ImageFont.FreeTypeFont, max_lines: int = MAX_BODY_LINES
+) -> tuple[str, list[str]]:
+    """Trim words until wrapped text fits in *max_lines*."""
+    words = text.split()
+    if not words:
+        return text, []
+    while words:
+        candidate = " ".join(words)
+        lines = _wrap_body_text(candidate, body_font)
+        if len(lines) <= max_lines:
+            return candidate, lines
+        words.pop()
+    return words[0] if words else text, _wrap_body_text(words[0], body_font)[:max_lines]
+
+
 def _fit_body_to_band(
     image_text: str,
     title_lines: list[str],
     title_font: ImageFont.FreeTypeFont,
     band_h: int,
 ) -> tuple[list[str], ImageFont.FreeTypeFont, int, int, int, int]:
-    """Shrink body font until title + body fit inside the text band."""
-    for size in range(BODY_FONT_SIZE, BODY_FONT_MIN - 1, -2):
-        body_font = _load_font("Montserrat-Regular.ttf", size)
-        body_lines = _wrap_body_text(image_text, body_font)
-        title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
-            title_lines, title_font, body_lines, body_font
-        )
-        if total_h <= band_h - TEXT_FIT_MARGIN:
-            return body_lines, body_font, title_block_h, body_line_h, body_block_h, total_h
-
-    body_font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
-    body_lines = _wrap_body_text(image_text, body_font)
-    while len(body_lines) > 4:
-        title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
-            title_lines, title_font, body_lines, body_font
-        )
-        if total_h <= band_h - TEXT_FIT_MARGIN:
-            break
-        body_lines = body_lines[:-1]
-    if body_lines:
-        last = body_lines[-1].rstrip(".,; ")
-        body_lines[-1] = (last[: max(0, len(last) - 4)] + "...") if len(last) > 20 else last + "..."
+    """Use large body font; never exceed MAX_BODY_LINES."""
+    body_font = _load_font("Montserrat-Regular.ttf", BODY_FONT_SIZE)
+    _, body_lines = _truncate_to_max_lines(image_text, body_font, MAX_BODY_LINES)
     title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
         title_lines, title_font, body_lines, body_font
     )
+
+    if total_h > band_h - TEXT_FIT_MARGIN:
+        body_font = _load_font("Montserrat-Regular.ttf", BODY_FONT_MIN)
+        _, body_lines = _truncate_to_max_lines(image_text, body_font, MAX_BODY_LINES)
+        title_block_h, body_line_h, body_block_h, total_h = _measure_layout(
+            title_lines, title_font, body_lines, body_font
+        )
+
     return body_lines, body_font, title_block_h, body_line_h, body_block_h, total_h
 
 
