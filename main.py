@@ -29,6 +29,14 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+os.environ.setdefault("PYTHONUTF8", "1")
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -383,13 +391,18 @@ def run(dry_run: bool = False) -> None:
             write_lock(item["id"])
 
     if item is None:
-        print("[main] All curiosities have been posted. Add new entries to curiosities.json.")
-        # Reset all to unposted and start over
-        for c in curiosities:
-            c["posted"] = False
-        save_curiosities(curiosities)
-        item = pick_next(curiosities)
-        print(f"[main] Cycle reset — starting over with: {item['title']}")
+        print("[main] All curiosities have been posted — generating fresh content...")
+        if OPENAI_KEY:
+            try:
+                import content_generator
+                content_generator.generate_curiosities(count=GENERATE_BATCH_SIZE)
+                curiosities = load_curiosities()
+                item = pick_next(curiosities)
+            except Exception as exc:
+                print(f"[main] Auto-generation failed: {exc}")
+        if item is None:
+            print("[main] No new content available. Set OPENAI_API_KEY to auto-generate.")
+            return
 
     print(f"[main] Selected: [{item['id']}] {item['title']}")
 
@@ -407,8 +420,8 @@ def run(dry_run: bool = False) -> None:
 
     image_generator.generate_post_image(
         background_path=bg_path,
-        title=item["title"],
-        image_text=item["image_text"],
+        title=item["image_text"],
+        image_text=item["title"],
         output_path=img_path,
     )
 

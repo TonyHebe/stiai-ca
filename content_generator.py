@@ -114,32 +114,40 @@ def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
 
 SYSTEM_PROMPT = (
     "Esti un redactor expert pentru pagina de Facebook Stiai Ca? — o pagina educativa "
-    "in limba romana care publica curiozitati despre natura, plante, animale, fenomene "
-    "naturale si stiinta. Scrii continut captivant, corect stiintific, usor de inteles "
-    "si adaptat publicului general. Tonul este cald, fascinant si informativ. "
+    "in limba romana care publica curiozitati UIMITOARE si FASCINANTE din toata lumea: "
+    "spatiu, ocean adanc, fizica, recorduri naturale, animale extreme, fenomene bizare, "
+    "descoperiri stiintifice socante, corpul uman, geologie si orice fapt care face "
+    "oamenii sa spuna WOW! Scrii continut care starneste curiozitatea, cu fapte concrete "
+    "(numere, recorduri, comparatii vizuale), corect stiintific, usor de inteles. "
+    "Tonul este entuziast, fascinant si plin de energie — ca si cum ai spune unui prieten "
+    "ceva incredibil pe care tocmai l-ai aflat. "
     "Nu folosesti niciodata linkuri externe sau referinte la alte site-uri. "
     "IMPORTANT: Nu folosi ghilimele duble in interiorul valorilor JSON."
 )
 
 USER_PROMPT_TEMPLATE = (
-    "Genereaza o curiozitate pentru pagina Facebook Stiai Ca? despre: {topic}\n\n"
+    "Genereaza o curiozitate UIMITOARE pentru pagina Facebook Stiai Ca? despre: {topic}\n\n"
+    "IMPORTANT: Faptele trebuie sa fie SOCANTE, SURPRINZATOARE — genul de lucru care face "
+    "oamenii sa opreasca scroll-ul. Include NUMERE CONCRETE, comparatii vizuale, recorduri.\n\n"
     "Returneaza EXCLUSIV un obiect JSON valid cu exact aceste campuri (fara text in afara JSON-ului):\n\n"
     "{{\n"
-    '  "title": "Numele subiectului, 1-3 cuvinte, ex: Margareta",\n'
-    '  "image_text": "Text scurt pe imagine: 4-5 propozitii clare (8-12 cuvinte fiecare). '
+    '  "title": "Titlu scurt si puternic, 1-4 cuvinte, ex: Rechinul Nemuritor",\n'
+    '  "image_text": "Text scurt pe imagine: 4-5 propozitii SOCANTE si CLARE (8-12 cuvinte fiecare). '
     'Total 200-260 caractere, MAXIM 280. Trebuie sa incapa in 5-6 randuri vizibile — '
-    'NU scrie paragrafe lungi. Fapte captivante despre subiect. Fara ghilimele interioare.",\n'
-    '  "caption": "Textul complet al postarii Facebook — un mini-articol educational. '
+    'NU scrie paragrafe lungi. Fapte WOW cu numere concrete. Fara ghilimele interioare.",\n'
+    '  "caption": "Textul complet al postarii Facebook — un mini-articol educational CAPTIVANT. '
+    'Incepe cu un HOOK puternic (intrebare retorica sau fapt socant). '
     'Scrie 8-10 paragrafe, fiecare cu 4-6 propozitii (minim 800 cuvinte total). '
-    'Include: introducere captivanta, context istoric/stiintific, fapte detaliate, '
-    'exemple concrete din Romania sau lume, de ce conteaza, curiozitati bonus. '
+    'Include: introducere care agata, fapte detaliate cu numere si comparatii, '
+    'context stiintific accesibil, curiozitati bonus surprinzatoare, concluzie memorabila. '
     'La final adauga 8-12 hashtag-uri relevante. Fara ghilimele interioare.",\n'
     '  "image_prompt": "A detailed English prompt for gpt-image-1. The photograph MUST clearly show '
-    '{topic} as the main subject — unmistakable, large, and centered in the UPPER HALF of the frame. '
-    'The lower third should be simple blurred background (forest floor, sky, or water) for text overlay. '
-    'Close-up or medium shot, subject fully visible. Specify: exact subject, environment, lighting. '
+    'the main subject related to {topic} — dramatic, stunning, unmistakable, large, and centered '
+    'in the UPPER HALF of the frame. The lower third should be simple dark/blurred background for '
+    'text overlay. Use dramatic cinematic lighting. Close-up or medium shot, subject fully visible. '
+    'Specify: exact subject, environment, lighting mood. '
     'Do NOT show unrelated animals or objects. '
-    'End with: professional nature photography, 4:5 portrait, no text, no watermark."\n'
+    'End with: professional photography, 4:5 portrait, no text, no watermark."\n'
     "}}"
 )
 
@@ -175,10 +183,65 @@ def make_id(title: str, existing: set) -> str:
 
 
 def pick_topic(topics: list, curiosities: list) -> str:
-    used = {c["title"].lower() for c in curiosities}
-    unused = [t for t in topics if t.lower() not in used]
+    used_titles = {c["title"].lower() for c in curiosities}
+    unused = [
+        t for t in topics
+        if t.lower() not in used_titles
+        and not any(t.lower() in c.get("caption", "").lower()[:100] for c in curiosities)
+    ]
     import random
-    return random.choice(unused if unused else topics)
+    if not unused:
+        unused = [t for t in topics if t.lower() not in used_titles]
+    if unused:
+        return random.choice(unused)
+    return None
+
+
+DISCOVER_TOPICS_PROMPT = (
+    "Esti un cercetator de curiozitati stiintifice. Genereaza {count} subiecte UIMITOARE "
+    "si FASCINANTE pentru o pagina de Facebook numita Stiai Ca?\n\n"
+    "REGULI:\n"
+    "- Fiecare subiect trebuie sa fie SOCANT, SURPRINZATOR — genul care opreste scroll-ul\n"
+    "- Acopera domenii DIVERSE: spatiu, ocean adanc, fizica, biologie extrema, recorduri "
+    "naturale, fenomene bizare, corpul uman, geologie, chimie, tehnologie naturala\n"
+    "- Include FAPTE CONCRETE cu numere (adancimi, temperaturi, dimensiuni, varste)\n"
+    "- NU repeta aceste subiecte deja folosite:\n{used}\n\n"
+    "Returneaza EXCLUSIV un JSON valid: {{\"topics\": [\"subiect 1\", \"subiect 2\", ...]}}"
+)
+
+
+def discover_topics(client: OpenAI, curiosities: list, count: int = 20) -> list[str]:
+    """Ask GPT to discover fresh, fascinating topics we haven't covered yet."""
+    used_summary = ", ".join(c["title"] for c in curiosities[-60:]) or "niciunul"
+    print(f"  [GPT] Discovering {count} new topics ...", flush=True)
+
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": DISCOVER_TOPICS_PROMPT.format(count=count, used=used_summary),
+            },
+        ],
+        temperature=1.0,
+        max_tokens=2000,
+        response_format={"type": "json_object"},
+    )
+
+    data = json.loads(resp.choices[0].message.content.strip())
+    new_topics = data.get("topics", [])
+    if new_topics:
+        existing_topics = load_topics()
+        existing_topics.extend(new_topics)
+        save_topics(existing_topics)
+        print(f"  [GPT] Added {len(new_topics)} new topics to topics.json")
+    return new_topics
+
+
+def save_topics(data: list) -> None:
+    with open(TOPICS_FILE, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2)
 
 
 # ── Step 1: GPT writes the curiosity ──────────────────────────────────────────
@@ -275,6 +338,14 @@ def generate_curiosities(count: int = 1, topic: str = None) -> list:
 
     for i in range(count):
         chosen = topic if topic else pick_topic(topics, curiosities + new_entries)
+        if chosen is None:
+            print(f"\n[{i+1}/{count}] Topic list exhausted — asking AI to discover new ones...")
+            fresh = discover_topics(client, curiosities + new_entries, count=20)
+            topics = load_topics()
+            chosen = pick_topic(topics, curiosities + new_entries)
+        if chosen is None:
+            print(f"  [SKIP] Could not find a new topic")
+            continue
         print(f"\n[{i+1}/{count}] Topic: {chosen}")
 
         for attempt in range(3):
