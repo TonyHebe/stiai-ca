@@ -274,10 +274,11 @@ def _generate_background_with_openai(curiosity: dict, force: bool = False) -> st
         return None
     title = curiosity.get("title", "nature")
     prompt = curiosity.get("image_prompt") or (
-        f"A stunning photorealistic close-up photograph of {title} as the clear main subject "
-        f"in the UPPER HALF of the frame. {curiosity.get('image_keywords', '')}. "
-        "Lower third is simple blurred background for text. Subject must be unmistakable. "
-        "golden hour lighting, professional nature photography, 4:5 portrait, no text, no watermark."
+        f"A visually striking photograph of {title} in its natural environment. "
+        f"{curiosity.get('image_keywords', '')}. "
+        "Show an interesting angle or action — NOT a centered close-up staring at camera. "
+        "Subject in the upper 60% of frame, lower 40% darker/blurred for text overlay. "
+        "Cinematic lighting, professional photography, 4:5 portrait, no text, no watermark."
     )
     # Ensure the subject is explicit even when image_prompt exists
     if title.lower() not in prompt.lower():
