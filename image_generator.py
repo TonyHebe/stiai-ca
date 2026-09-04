@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 TARGET_W, TARGET_H = 1080, 1350
 FONTS_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
 
-PHOTO_RATIO = 0.55          # Photo takes top 55% of the canvas
+PHOTO_RATIO = 0.75          # Photo takes top 75% of the canvas
 BLACK_BAND_TOP = int(TARGET_H * PHOTO_RATIO)
 
 BRAND_NAME = "ȘTIAI\nCĂ?"
@@ -33,8 +33,8 @@ LINE_THICKNESS = 2
 LINE_SIDE_MARGIN = 200      # How far the separator line extends from center
 
 TITLE_COLOR = "#FFFFFF"
-TITLE_FONT_SIZE = 72
-TITLE_FONT_MIN = 44
+TITLE_FONT_SIZE = 82
+TITLE_FONT_MIN = 54
 SIDE_PADDING = 60
 TITLE_TOP_PAD = 30          # Space between brand text and title
 
@@ -146,8 +146,8 @@ def _make_circular_inset(img: Image.Image, diameter: int) -> Image.Image:
 
 # ── Title text layout ────────────────────────────────────────────────────────
 
-def _shorten_to_statement(text: str, max_sentences: int = 2) -> str:
-    """Keep only the first 1-2 sentences for a punchy card headline."""
+def _shorten_to_statement(text: str, max_sentences: int = 1) -> str:
+    """Keep only the first sentence for a punchy card headline (max ~80 chars)."""
     sentences = []
     current = ""
     for ch in text:
@@ -157,11 +157,12 @@ def _shorten_to_statement(text: str, max_sentences: int = 2) -> str:
             current = ""
             if len(sentences) >= max_sentences:
                 break
-    if current.strip() and len(sentences) < max_sentences:
+    if current.strip() and not sentences:
         sentences.append(current.strip())
-    result = " ".join(sentences)
-    if len(result) > 120 and len(sentences) > 1:
-        result = sentences[0]
+    result = sentences[0] if sentences else text
+    if len(result) > 80:
+        result = result[:77].rsplit(" ", 1)[0].rstrip(".,;:!? ")
+    result = result.rstrip(".!?")
     return result
 
 
@@ -238,18 +239,19 @@ def generate_post_image(
     bg = _crop_to_top(bg, TARGET_W, photo_h)
     canvas.paste(bg, (0, 0))
 
-    # Subtle gradient at bottom edge of photo for smooth transition
-    gradient = Image.new("RGBA", (TARGET_W, 60), (0, 0, 0, 0))
+    # Tall gradient at bottom of photo for smooth blend into text area
+    grad_h = 200
+    gradient = Image.new("RGBA", (TARGET_W, grad_h), (0, 0, 0, 0))
     gdraw = ImageDraw.Draw(gradient)
-    for y in range(60):
-        alpha = int(255 * (y / 60) ** 1.5)
+    for y in range(grad_h):
+        alpha = int(255 * (y / grad_h) ** 2.0)
         gdraw.line([(0, y), (TARGET_W, y)], fill=(0, 0, 0, alpha))
     canvas.paste(
         Image.alpha_composite(
-            canvas.crop((0, photo_h - 60, TARGET_W, photo_h)).convert("RGBA"),
+            canvas.crop((0, photo_h - grad_h, TARGET_W, photo_h)).convert("RGBA"),
             gradient,
         ).convert("RGB"),
-        (0, photo_h - 60),
+        (0, photo_h - grad_h),
     )
 
     # Circular inset (top-left)
@@ -265,7 +267,7 @@ def generate_post_image(
     draw = ImageDraw.Draw(canvas)
 
     # --- Separator line ---
-    line_y = photo_h + 30
+    line_y = photo_h + 12
     line_cx = TARGET_W // 2
     draw.line(
         [(line_cx - LINE_SIDE_MARGIN, line_y), (line_cx + LINE_SIDE_MARGIN, line_y)],
@@ -275,7 +277,7 @@ def generate_post_image(
 
     # --- Brand text ---
     brand_font = _load_font("Montserrat-Bold.ttf", BRAND_FONT_SIZE)
-    brand_y = line_y + 12
+    brand_y = line_y + 8
     for i, brand_line in enumerate(BRAND_NAME.split("\n")):
         bw = _text_width(brand_line, brand_font)
         draw.text(
@@ -287,8 +289,8 @@ def generate_post_image(
     brand_total_h = len(BRAND_NAME.split("\n")) * (BRAND_FONT_SIZE + BRAND_SPACING)
 
     # --- Title text ---
-    title_area_top = brand_y + brand_total_h + TITLE_TOP_PAD
-    title_area_bottom = TARGET_H - 40
+    title_area_top = brand_y + brand_total_h + 10
+    title_area_bottom = TARGET_H - 20
     max_title_w = TARGET_W - 2 * SIDE_PADDING
     max_title_h = title_area_bottom - title_area_top
 

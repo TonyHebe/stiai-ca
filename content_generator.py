@@ -42,11 +42,11 @@ IMAGES_DIR       = BASE_DIR / "assets" / "images"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-MIN_IMAGE_TEXT_CHARS     = 120
-MAX_IMAGE_TEXT_CHARS     = 280
-MIN_IMAGE_TEXT_SENTENCES = 3
-MAX_IMAGE_TEXT_SENTENCES = 5
-TARGET_IMAGE_TEXT_LINES  = 6
+MIN_IMAGE_TEXT_CHARS     = 28
+MAX_IMAGE_TEXT_CHARS     = 90
+MIN_IMAGE_TEXT_SENTENCES = 1
+MAX_IMAGE_TEXT_SENTENCES = 1
+TARGET_IMAGE_TEXT_LINES  = 3
 
 
 def count_sentences(text: str) -> int:
@@ -71,15 +71,15 @@ def image_text_needs_rewrite(text: str) -> bool:
 
 
 def clamp_image_text(text: str) -> str:
-    text = (text or "").strip()
+    text = (text or "").strip().replace("!", "")
+    text = re.sub(r"\s+", " ", text).strip(" .,;:")
     if len(text) <= MAX_IMAGE_TEXT_CHARS:
         return text
-    trimmed = text[: MAX_IMAGE_TEXT_CHARS - 3].rsplit(" ", 1)[0]
-    return trimmed.rstrip(".,; ") + "..."
+    return text[: MAX_IMAGE_TEXT_CHARS].rsplit(" ", 1)[0].rstrip(" .,;:")
 
 
 def rewrite_image_text(title: str, current_text: str, client: OpenAI) -> str:
-    """Rewrite on-image text to 5-6 short lines (not a long paragraph)."""
+    """Rewrite on-image text into one short, grammatically correct Romanian headline."""
     print(f"  [GPT] Rewriting image_text for: {title} ...", flush=True)
     resp = client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -88,18 +88,27 @@ def rewrite_image_text(title: str, current_text: str, client: OpenAI) -> str:
             {
                 "role": "user",
                 "content": (
-                    f"Rescrie textul scurt de pe imagine despre {title}.\n"
+                    f"Corecteaza gramatical textul de pe imagine despre {title}.\n"
+                    f"Pastreaza acelasi fapt. Nu inventa informatii noi.\n"
                     f"Text actual: {current_text}\n\n"
-                    "Returneaza EXCLUSIV JSON:\n"
-                    '{"image_text": "4-5 propozitii SCURTE (8-12 cuvinte fiecare). '
-                    "Total 200-260 caractere, MAXIM 280. Textul trebuie sa incapa in "
-                    "5-6 randuri pe imagine — NU scrie paragrafe lungi. Fapte clare, "
-                    'captivante. Fara ghilimele interioare."}'
+                    "REGULI STRICTE:\n"
+                    "- Exact O propozitie naturala, 8-14 cuvinte, maxim 90 de caractere\n"
+                    "- Romana vorbita corect: subiect + predicat + complement\n"
+                    "- Foloseste DOAR verbe reale din DEX (erup, nu erupeaza; "
+                    "contin, nu conțineaza; zboara, nu zboraza)\n"
+                    "- Acord corect: vulcanii erup, ciuperca controleaza, rechinul traieste\n"
+                    "- Diacritice obligatorii\n"
+                    "- Fara semne de exclamatie, fara ghilimele, fara punct final\n"
+                    "Exemple corecte:\n"
+                    "Pe Enceladus, vulcanii de gheata erup cu 800 km/h\n"
+                    "Masa protonului vine aproape tot din energie\n"
+                    "Papagalii de recif isi lovesc rivalii cu fruntea\n\n"
+                    "Returneaza EXCLUSIV JSON: {\"image_text\": \"titlul corect\"}"
                 ),
             },
         ],
-        temperature=0.8,
-        max_tokens=400,
+        temperature=0.3,
+        max_tokens=200,
         response_format={"type": "json_object"},
     )
     text = json.loads(resp.choices[0].message.content.strip())["image_text"].strip()
@@ -113,14 +122,13 @@ def expand_image_text(title: str, current_text: str, client: OpenAI) -> str:
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = (
-    "Esti un redactor expert pentru pagina de Facebook Stiai Ca? — o pagina educativa "
-    "in limba romana care publica curiozitati UIMITOARE si FASCINANTE din toata lumea: "
-    "spatiu, ocean adanc, fizica, recorduri naturale, animale extreme, fenomene bizare, "
-    "descoperiri stiintifice socante, corpul uman, geologie si orice fapt care face "
-    "oamenii sa spuna WOW! Scrii continut care starneste curiozitatea, cu fapte concrete "
-    "(numere, recorduri, comparatii vizuale), corect stiintific, usor de inteles. "
-    "Tonul este entuziast, fascinant si plin de energie — ca si cum ai spune unui prieten "
-    "ceva incredibil pe care tocmai l-ai aflat. "
+    "Esti un redactor nativ de limba romana pentru pagina Facebook Stiai Ca? — o pagina "
+    "educativa care publica curiozitati UIMITOARE: spatiu, ocean adanc, fizica, recorduri "
+    "naturale, animale extreme, fenomene bizare, descoperiri stiintifice, corpul uman. "
+    "Scrii continut captivant, cu fapte concrete (numere, recorduri, comparatii). "
+    "GRAMATICA ESTE OBLIGATORIE: romana literara corecta — acord subiect-predicat, "
+    "conjugari reale (nu forme inventate), diacritice, gen, numar, caz. "
+    "Nu calchiaza engleza. Nu folosi semne de exclamatie in titlurile de pe imagine. "
     "Nu folosesti niciodata linkuri externe sau referinte la alte site-uri. "
     "IMPORTANT: Nu folosi ghilimele duble in interiorul valorilor JSON."
 )
@@ -132,9 +140,10 @@ USER_PROMPT_TEMPLATE = (
     "Returneaza EXCLUSIV un obiect JSON valid cu exact aceste campuri (fara text in afara JSON-ului):\n\n"
     "{{\n"
     '  "title": "Titlu scurt si puternic, 1-4 cuvinte, ex: Rechinul Nemuritor",\n'
-    '  "image_text": "Text scurt pe imagine: 4-5 propozitii SOCANTE si CLARE (8-12 cuvinte fiecare). '
-    'Total 200-260 caractere, MAXIM 280. Trebuie sa incapa in 5-6 randuri vizibile — '
-    'NU scrie paragrafe lungi. Fapte WOW cu numere concrete. Fara ghilimele interioare.",\n'
+    '  "image_text": "UN SINGUR titlu de imagine, 8-14 cuvinte, maxim 90 caractere. '
+    'Romana literara CORECTA (acord, conjugari reale, diacritice). Fapt concret cu un numar '
+    'daca e posibil. Fara semne de exclamatie, fara ghilimele, fara punct final. '
+    'Exemplu: Pe Enceladus, vulcanii de gheata erup cu 800 km/h",\n'
     '  "caption": "Textul complet al postarii Facebook — un mini-articol educational CAPTIVANT. '
     'Incepe cu un HOOK puternic (intrebare retorica sau fapt socant). '
     'Scrie 8-10 paragrafe, fiecare cu 4-6 propozitii (minim 800 cuvinte total). '

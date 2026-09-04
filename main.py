@@ -244,22 +244,23 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
 
 
 def ensure_image_text(item: dict, curiosities: list[dict]) -> None:
-    """Rewrite image_text so it fits 5-6 short lines on the image."""
+    """Rewrite on-image text into one short, grammatically correct headline."""
     if not OPENAI_KEY:
         return
     try:
         import content_generator
         current = item.get("image_text", "")
-        if not content_generator.image_text_needs_rewrite(current):
-            item["image_text"] = content_generator.clamp_image_text(current)
-            return
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_KEY)
-        item["image_text"] = content_generator.rewrite_image_text(
+        polished = content_generator.rewrite_image_text(
             item["title"], current, client
         )
-        save_curiosities(curiosities)
-        print(f"[main] Rewrote image_text for: {item['title']}")
+        if polished and polished != current:
+            item["image_text"] = polished
+            save_curiosities(curiosities)
+            print(f"[main] Rewrote image_text for: {item['title']}")
+        else:
+            item["image_text"] = content_generator.clamp_image_text(current)
     except Exception as exc:
         print(f"[main] Could not rewrite image_text: {exc}")
         import content_generator
