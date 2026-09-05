@@ -20,8 +20,10 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 TARGET_W, TARGET_H = 1080, 1350
 FONTS_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
 
-PHOTO_RATIO = 0.75          # Photo takes top 75% of the canvas
+PHOTO_RATIO = 1.0           # Photo fills the whole canvas
 BLACK_BAND_TOP = int(TARGET_H * PHOTO_RATIO)
+TEXT_START_RATIO = 0.64     # Brand + title start at 64% down
+OVERLAY_MAX_ALPHA = 90      # Semi-transparent black band (0=clear, 255=solid)
 
 BRAND_NAME = "ȘTIAI\nCĂ?"
 BRAND_FONT_SIZE = 22
@@ -33,9 +35,9 @@ LINE_THICKNESS = 2
 LINE_SIDE_MARGIN = 200      # How far the separator line extends from center
 
 TITLE_COLOR = "#FFFFFF"
-TITLE_FONT_SIZE = 82
-TITLE_FONT_MIN = 54
-SIDE_PADDING = 60
+TITLE_FONT_SIZE = 90
+TITLE_FONT_MIN = 62
+SIDE_PADDING = 36
 TITLE_TOP_PAD = 30          # Space between brand text and title
 
 INSET_DIAMETER = 220        # Circular inset size
@@ -228,31 +230,33 @@ def generate_post_image(
     Returns:
         *output_path* on success.
     """
-    photo_h = BLACK_BAND_TOP
-    black_h = TARGET_H - photo_h
+    photo_h = TARGET_H
 
     # --- Build canvas ---
     canvas = Image.new("RGB", (TARGET_W, TARGET_H), (0, 0, 0))
 
-    # Top photo
+    # Photo fills the full frame
     bg = Image.open(background_path).convert("RGB")
     bg = _crop_to_top(bg, TARGET_W, photo_h)
     canvas.paste(bg, (0, 0))
 
-    # Tall gradient at bottom of photo for smooth blend into text area
-    grad_h = 200
-    gradient = Image.new("RGBA", (TARGET_W, grad_h), (0, 0, 0, 0))
-    gdraw = ImageDraw.Draw(gradient)
-    for y in range(grad_h):
-        alpha = int(255 * (y / grad_h) ** 2.0)
-        gdraw.line([(0, y), (TARGET_W, y)], fill=(0, 0, 0, alpha))
-    canvas.paste(
-        Image.alpha_composite(
-            canvas.crop((0, photo_h - grad_h, TARGET_W, photo_h)).convert("RGBA"),
-            gradient,
-        ).convert("RGB"),
-        (0, photo_h - grad_h),
-    )
+    # Semi-transparent black band: gradient fade at top, solid-ish at bottom
+    band_top = int(TARGET_H * TEXT_START_RATIO) - 80  # gradient starts above text
+    band_h = TARGET_H - band_top
+    grad_zone = 120  # pixels of gradient before the solid part
+    overlay = Image.new("RGBA", (TARGET_W, band_h), (0, 0, 0, 0))
+    odraw = ImageDraw.Draw(overlay)
+    for y in range(band_h):
+        if y < grad_zone:
+            alpha = int(OVERLAY_MAX_ALPHA * (y / grad_zone) ** 1.8)
+        else:
+            alpha = OVERLAY_MAX_ALPHA
+        odraw.line([(0, y), (TARGET_W, y)], fill=(0, 0, 0, alpha))
+    faded = Image.alpha_composite(
+        canvas.crop((0, band_top, TARGET_W, TARGET_H)).convert("RGBA"),
+        overlay,
+    ).convert("RGB")
+    canvas.paste(faded, (0, band_top))
 
     # Circular inset (top-left)
     if inset_path and os.path.exists(inset_path):
@@ -267,7 +271,7 @@ def generate_post_image(
     draw = ImageDraw.Draw(canvas)
 
     # --- Separator line ---
-    line_y = photo_h + 12
+    line_y = int(TARGET_H * TEXT_START_RATIO)
     line_cx = TARGET_W // 2
     draw.line(
         [(line_cx - LINE_SIDE_MARGIN, line_y), (line_cx + LINE_SIDE_MARGIN, line_y)],
@@ -280,17 +284,15 @@ def generate_post_image(
     brand_y = line_y + 8
     for i, brand_line in enumerate(BRAND_NAME.split("\n")):
         bw = _text_width(brand_line, brand_font)
-        draw.text(
-            (line_cx - bw / 2, brand_y + i * (BRAND_FONT_SIZE + BRAND_SPACING)),
-            brand_line,
-            font=brand_font,
-            fill=BRAND_COLOR,
-        )
+        x = line_cx - bw / 2
+        y = brand_y + i * (BRAND_FONT_SIZE + BRAND_SPACING)
+        draw.text((x + 2, y + 2), brand_line, font=brand_font, fill=(0, 0, 0))
+        draw.text((x, y), brand_line, font=brand_font, fill=BRAND_COLOR)
     brand_total_h = len(BRAND_NAME.split("\n")) * (BRAND_FONT_SIZE + BRAND_SPACING)
 
     # --- Title text ---
-    title_area_top = brand_y + brand_total_h + 10
-    title_area_bottom = TARGET_H - 20
+    title_area_top = brand_y + brand_total_h + 8
+    title_area_bottom = TARGET_H - 50
     max_title_w = TARGET_W - 2 * SIDE_PADDING
     max_title_h = title_area_bottom - title_area_top
 
@@ -299,17 +301,14 @@ def generate_post_image(
     line_spacing = 10
     total_text_h = len(title_lines) * (line_h + line_spacing) - line_spacing
 
-    # Center the title block vertically in the remaining space
-    title_y = title_area_top + (max_title_h - total_text_h) // 2
+    # Sit the title near the top of the remaining band, not vertically centered
+    title_y = title_area_top
 
     for line in title_lines:
         lw = _text_width(line, title_font)
-        draw.text(
-            ((TARGET_W - lw) / 2, title_y),
-            line,
-            font=title_font,
-            fill=TITLE_COLOR,
-        )
+        x = (TARGET_W - lw) / 2
+        draw.text((x + 3, title_y + 3), line, font=title_font, fill=(0, 0, 0))
+        draw.text((x, title_y), line, font=title_font, fill=TITLE_COLOR)
         title_y += line_h + line_spacing
 
     # --- Save ---

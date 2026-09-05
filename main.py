@@ -184,11 +184,31 @@ def posts_today() -> int:
     return count
 
 
+def load_posted_titles() -> set[str]:
+    """Collect all titles that have been posted (from both log and curiosities)."""
+    titles = set()
+    if POSTED_LOG.exists():
+        with open(POSTED_LOG, encoding="utf-8") as fh:
+            for e in json.load(fh):
+                if e.get("title"):
+                    titles.add(e["title"].lower().strip())
+    with open(CURIOSITIES_FILE, encoding="utf-8") as fh:
+        for c in json.load(fh):
+            if c.get("posted") and c.get("title"):
+                titles.add(c["title"].lower().strip())
+    return titles
+
+
 def pick_next(curiosities: list[dict]) -> dict | None:
-    """Return the next unposted curiosity, skipping locked/recently-claimed topics."""
+    """Return the next unposted curiosity, skipping locked/recently-claimed/duplicate topics."""
     posted_ids = load_posted_ids()
+    posted_titles = load_posted_titles()
     for c in curiosities:
         if c.get("posted") or c["id"] in posted_ids:
+            continue
+        if c.get("title", "").lower().strip() in posted_titles:
+            print(f"[main] Skipping [{c['id']}] — title already posted: {c['title']}")
+            c["posted"] = True
             continue
         if lock_should_skip(c["id"]):
             print(
@@ -265,6 +285,32 @@ def ensure_image_text(item: dict, curiosities: list[dict]) -> None:
         print(f"[main] Could not rewrite image_text: {exc}")
         import content_generator
         item["image_text"] = content_generator.clamp_image_text(item.get("image_text", ""))
+
+
+# ── Facebook duplicate check ──────────────────────────────────────────────────
+
+def _already_on_facebook(title: str) -> bool:
+    """Check if a post with this title was recently published on the Facebook page."""
+    if not PAGE_ID or not ACCESS_TOKEN:
+        return False
+    try:
+        import requests
+        resp = requests.get(
+            f"https://graph.facebook.com/v20.0/{PAGE_ID}/posts",
+            params={"access_token": ACCESS_TOKEN, "fields": "message", "limit": 30},
+            timeout=15,
+        )
+        if not resp.ok:
+            return False
+        title_lower = title.lower().strip()
+        for post in resp.json().get("data", []):
+            msg = (post.get("message") or "").lower()
+            if title_lower in msg:
+                return True
+        return False
+    except Exception as exc:
+        print(f"[main] Facebook duplicate check failed: {exc}")
+        return False
 
 
 # ── Background image resolution ──────────────────────────────────────────────
@@ -407,6 +453,20 @@ def run(dry_run: bool = False) -> None:
             return
 
     print(f"[main] Selected: [{item['id']}] {item['title']}")
+
+    # Check Facebook for recent duplicates before posting
+    if not dry_run and _already_on_facebook(item["title"]):
+        print(f"[main] Skipping — '{item['title']}' was already posted to Facebook recently")
+        item["posted"] = True
+        save_curiosities(curiosities)
+        item = pick_next(curiosities)
+        if item:
+            save_curiosities(curiosities)  # save any skipped-as-posted flags
+            write_lock(item["id"])
+            print(f"[main] New selection: [{item['id']}] {item['title']}")
+        else:
+            print("[main] No more unposted curiosities available.")
+            return
 
     ensure_image_text(item, curiosities)
 
