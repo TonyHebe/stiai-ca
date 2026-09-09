@@ -192,7 +192,12 @@ STOPWORDS = {
     "decat", "doar", "foarte", "atunci", "acum", "tot", "toate", "unei", "unui",
     "this", "that", "with", "from", "have", "been", "were", "their", "about",
     "stiai", "curiozitate", "natura", "lumea", "oamenii", "cercetatorii",
+    "intrebat", "vreodata", "exemplu", "uimitor", "fascinant", "incredib",
+    "descoper", "transform", "specii",
 }
+
+ZOMBIE_HOST_STEMS = {"zombi", "zombie"}
+ZOMBIE_TOPIC_STEMS = {"furnic", "ciuper", "parazi", "ophio", "cordyc"}
 
 
 def _fold(text: str) -> str:
@@ -212,27 +217,27 @@ def _stems(text: str) -> set[str]:
 
 
 def topic_stems(item: dict) -> set[str]:
-    blob = " ".join(
-        [
-            item.get("title", ""),
-            item.get("image_text", ""),
-            (item.get("caption") or "")[:400],
-        ]
-    )
-    return _stems(blob)
+    return _stems(item.get("title", "") + " " + item.get("image_text", ""))
+
+
+def _is_zombie_host_story(item: dict) -> bool:
+    blob = topic_stems(item) | _stems((item.get("caption") or "")[:180])
+    return bool(blob & ZOMBIE_HOST_STEMS) and bool(blob & ZOMBIE_TOPIC_STEMS)
 
 
 def is_similar_topic(candidate: dict, posted_items: list[dict]) -> bool:
+    cand_title = _stems(candidate.get("title", ""))
     cand = topic_stems(candidate)
-    if len(cand) < 3:
-        return False
+    cand_zombie = _is_zombie_host_story(candidate)
     for posted in posted_items:
-        other = topic_stems(posted)
-        shared = cand & other
-        if len(shared) >= 4:
+        posted_title = _stems(posted.get("title", ""))
+        if len(cand_title & posted_title) >= 2:
             return True
-        union = cand | other
-        if union and len(shared) / len(union) >= 0.35 and len(shared) >= 3:
+        if cand_zombie and _is_zombie_host_story(posted):
+            return True
+        shared = cand & topic_stems(posted)
+        rare = {s for s in shared if len(s) >= 6}
+        if len(rare) >= 2 and len(shared) >= 3:
             return True
     return False
 
@@ -393,8 +398,7 @@ def _already_on_facebook(item: dict) -> bool:
             msg_lower = msg.lower()
             if title_lower and title_lower in msg_lower:
                 return True
-            shared = cand & _stems(msg[:500])
-            if len(shared) >= 4:
+            if _is_zombie_host_story(item) and _is_zombie_host_story({"title": "", "image_text": "", "caption": msg}):
                 return True
         return False
     except Exception as exc:
