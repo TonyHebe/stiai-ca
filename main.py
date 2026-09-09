@@ -199,6 +199,19 @@ def load_posted_titles() -> set[str]:
     return titles
 
 
+def available_unposted_count(curiosities: list[dict]) -> int:
+    posted_ids = load_posted_ids()
+    posted_titles = load_posted_titles()
+    count = 0
+    for c in curiosities:
+        if c.get("posted") or c["id"] in posted_ids:
+            continue
+        if c.get("title", "").lower().strip() in posted_titles:
+            continue
+        count += 1
+    return count
+
+
 def pick_next(curiosities: list[dict]) -> dict | None:
     """Return the next unposted curiosity, skipping locked/recently-claimed/duplicate topics."""
     posted_ids = load_posted_ids()
@@ -226,8 +239,9 @@ def claim_next() -> None:
     sync_posted_from_log(curiosities)
     curiosities = load_curiosities()
     item = pick_next(curiosities)
+    save_curiosities(curiosities)
     if item is None:
-        print("[main] Nothing to claim.")
+        print("[main] Nothing to claim — queue is empty or all remaining titles were already posted.")
         return
     write_lock(item["id"])
     print(f"[main] Claimed: [{item['id']}] {item['title']}")
@@ -239,7 +253,7 @@ def maybe_refill_queue(curiosities: list[dict]) -> list[dict]:
     OPENAI_API_KEY is set, auto-generate GENERATE_BATCH_SIZE new curiosities.
     Returns the (potentially updated) curiosities list.
     """
-    unposted_count = sum(1 for c in curiosities if not c.get("posted"))
+    unposted_count = available_unposted_count(curiosities)
     if unposted_count >= LOW_CONTENT_THRESHOLD:
         return curiosities
 
@@ -435,6 +449,7 @@ def run(dry_run: bool = False) -> None:
 
     if not item or item.get("posted") or item["id"] in load_posted_ids():
         item = pick_next(curiosities)
+        save_curiosities(curiosities)
         if item:
             write_lock(item["id"])
 
@@ -446,6 +461,7 @@ def run(dry_run: bool = False) -> None:
                 content_generator.generate_curiosities(count=GENERATE_BATCH_SIZE)
                 curiosities = load_curiosities()
                 item = pick_next(curiosities)
+                save_curiosities(curiosities)
             except Exception as exc:
                 print(f"[main] Auto-generation failed: {exc}")
         if item is None:
@@ -465,8 +481,22 @@ def run(dry_run: bool = False) -> None:
             write_lock(item["id"])
             print(f"[main] New selection: [{item['id']}] {item['title']}")
         else:
-            print("[main] No more unposted curiosities available.")
-            return
+            print("[main] No more unposted curiosities — generating fresh content...")
+            if OPENAI_KEY:
+                try:
+                    import content_generator
+                    content_generator.generate_curiosities(count=GENERATE_BATCH_SIZE)
+                    curiosities = load_curiosities()
+                    item = pick_next(curiosities)
+                    save_curiosities(curiosities)
+                except Exception as exc:
+                    print(f"[main] Auto-generation failed: {exc}")
+                    item = None
+            if item is None:
+                print("[main] No more unposted curiosities available.")
+                return
+            write_lock(item["id"])
+            print(f"[main] New selection: [{item['id']}] {item['title']}")
 
     ensure_image_text(item, curiosities)
 

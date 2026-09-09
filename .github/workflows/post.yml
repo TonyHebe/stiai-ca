@@ -57,7 +57,10 @@ jobs:
         run: |
           git config user.name "StiaiCa Bot"
           git config user.email "bot@stiai-ca.local"
-          git add content/posting_lock.json
+          git add content/curiosities.json
+          if [ -f content/posting_lock.json ]; then
+            git add content/posting_lock.json
+          fi
           if git diff --staged --quiet; then
             echo "No claim to push."
             exit 0
@@ -87,7 +90,10 @@ jobs:
           git restore assets/images/ assets/fonts/ output/ 2>/dev/null || true
           git clean -fd output/ 2>/dev/null || true
           git stash push -u -m "workflow-artifacts" -- assets/images assets/fonts output .env 2>/dev/null || true
-          git add content/curiosities.json posted/posted_log.json content/posting_lock.json
+          git add content/curiosities.json posted/posted_log.json
+          if [ -f content/posting_lock.json ]; then
+            git add content/posting_lock.json
+          fi
           if git diff --staged --quiet; then
             echo "No state changes to save."
             exit 0
