@@ -24,8 +24,10 @@ import argparse
 import json
 import os
 import random
+import re
 import sys
 import time
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -184,6 +186,66 @@ def posts_today() -> int:
     return count
 
 
+STOPWORDS = {
+    "acest", "aceasta", "aceasta", "care", "pentru", "dintr", "dintre", "este",
+    "sunt", "poate", "pot", "peste", "unde", "cum", "cel", "cea", "cele", "mai",
+    "decat", "doar", "foarte", "atunci", "acum", "tot", "toate", "unei", "unui",
+    "this", "that", "with", "from", "have", "been", "were", "their", "about",
+    "stiai", "curiozitate", "natura", "lumea", "oamenii", "cercetatorii",
+}
+
+
+def _fold(text: str) -> str:
+    text = unicodedata.normalize("NFD", text or "")
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return text.lower()
+
+
+def _stems(text: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]{4,}", _fold(text))
+    stems = set()
+    for word in words:
+        if word in STOPWORDS:
+            continue
+        stems.add(word[:6] if len(word) >= 6 else word)
+    return stems
+
+
+def topic_stems(item: dict) -> set[str]:
+    blob = " ".join(
+        [
+            item.get("title", ""),
+            item.get("image_text", ""),
+            (item.get("caption") or "")[:400],
+        ]
+    )
+    return _stems(blob)
+
+
+def is_similar_topic(candidate: dict, posted_items: list[dict]) -> bool:
+    cand = topic_stems(candidate)
+    if len(cand) < 3:
+        return False
+    for posted in posted_items:
+        other = topic_stems(posted)
+        shared = cand & other
+        if len(shared) >= 4:
+            return True
+        union = cand | other
+        if union and len(shared) / len(union) >= 0.35 and len(shared) >= 3:
+            return True
+    return False
+
+
+def posted_topic_items(curiosities: list[dict]) -> list[dict]:
+    posted_ids = load_posted_ids()
+    items = []
+    for c in curiosities:
+        if c.get("posted") or c["id"] in posted_ids:
+            items.append(c)
+    return items
+
+
 def load_posted_titles() -> set[str]:
     """Collect all titles that have been posted (from both log and curiosities)."""
     titles = set()
@@ -202,11 +264,14 @@ def load_posted_titles() -> set[str]:
 def available_unposted_count(curiosities: list[dict]) -> int:
     posted_ids = load_posted_ids()
     posted_titles = load_posted_titles()
+    posted_topics = posted_topic_items(curiosities)
     count = 0
     for c in curiosities:
         if c.get("posted") or c["id"] in posted_ids:
             continue
         if c.get("title", "").lower().strip() in posted_titles:
+            continue
+        if is_similar_topic(c, posted_topics):
             continue
         count += 1
     return count
@@ -216,11 +281,16 @@ def pick_next(curiosities: list[dict]) -> dict | None:
     """Return the next unposted curiosity, skipping locked/recently-claimed/duplicate topics."""
     posted_ids = load_posted_ids()
     posted_titles = load_posted_titles()
+    posted_topics = posted_topic_items(curiosities)
     for c in curiosities:
         if c.get("posted") or c["id"] in posted_ids:
             continue
         if c.get("title", "").lower().strip() in posted_titles:
             print(f"[main] Skipping [{c['id']}] — title already posted: {c['title']}")
+            c["posted"] = True
+            continue
+        if is_similar_topic(c, posted_topics):
+            print(f"[main] Skipping [{c['id']}] — similar topic already posted: {c['title']}")
             c["posted"] = True
             continue
         if lock_should_skip(c["id"]):
@@ -303,23 +373,28 @@ def ensure_image_text(item: dict, curiosities: list[dict]) -> None:
 
 # ── Facebook duplicate check ──────────────────────────────────────────────────
 
-def _already_on_facebook(title: str) -> bool:
-    """Check if a post with this title was recently published on the Facebook page."""
+def _already_on_facebook(item: dict) -> bool:
+    """Check if a similar post was recently published on the Facebook page."""
     if not PAGE_ID or not ACCESS_TOKEN:
         return False
     try:
         import requests
         resp = requests.get(
             f"https://graph.facebook.com/v20.0/{PAGE_ID}/posts",
-            params={"access_token": ACCESS_TOKEN, "fields": "message", "limit": 30},
+            params={"access_token": ACCESS_TOKEN, "fields": "message", "limit": 40},
             timeout=15,
         )
         if not resp.ok:
             return False
-        title_lower = title.lower().strip()
+        title_lower = (item.get("title") or "").lower().strip()
+        cand = topic_stems(item)
         for post in resp.json().get("data", []):
-            msg = (post.get("message") or "").lower()
-            if title_lower in msg:
+            msg = post.get("message") or ""
+            msg_lower = msg.lower()
+            if title_lower and title_lower in msg_lower:
+                return True
+            shared = cand & _stems(msg[:500])
+            if len(shared) >= 4:
                 return True
         return False
     except Exception as exc:
@@ -471,7 +546,7 @@ def run(dry_run: bool = False) -> None:
     print(f"[main] Selected: [{item['id']}] {item['title']}")
 
     # Check Facebook for recent duplicates before posting
-    if not dry_run and _already_on_facebook(item["title"]):
+    if not dry_run and _already_on_facebook(item):
         print(f"[main] Skipping — '{item['title']}' was already posted to Facebook recently")
         item["posted"] = True
         save_curiosities(curiosities)

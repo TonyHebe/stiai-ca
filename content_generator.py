@@ -220,6 +220,8 @@ DISCOVER_TOPICS_PROMPT = (
     "- Acopera domenii DIVERSE: spatiu, ocean adanc, fizica, biologie extrema, recorduri "
     "naturale, fenomene bizare, corpul uman, geologie, chimie, tehnologie naturala\n"
     "- Include FAPTE CONCRETE cu numere (adancimi, temperaturi, dimensiuni, varste)\n"
+    "- NU reformula acelasi subiect cu alt titlu "
+    "(ex: daca ai avut Ciuperca Zombie, nu mai genera Paraziti Zombi sau Ophiocordyceps)\n"
     "- NU repeta aceste subiecte deja folosite:\n{used}\n\n"
     "Returneaza EXCLUSIV un JSON valid: {{\"topics\": [\"subiect 1\", \"subiect 2\", ...]}}"
 )
@@ -227,7 +229,8 @@ DISCOVER_TOPICS_PROMPT = (
 
 def discover_topics(client: OpenAI, curiosities: list, count: int = 20) -> list[str]:
     """Ask GPT to discover fresh, fascinating topics we haven't covered yet."""
-    used_summary = ", ".join(c["title"] for c in curiosities[-60:]) or "niciunul"
+    used_titles = sorted({c.get("title", "") for c in curiosities if c.get("title")})
+    used_summary = ", ".join(used_titles[-80:]) or "niciunul"
     print(f"  [GPT] Discovering {count} new topics ...", flush=True)
 
     resp = client.chat.completions.create(
