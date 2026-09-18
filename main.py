@@ -310,6 +310,14 @@ def pick_next(curiosities: list[dict]) -> dict | None:
 
 def claim_next() -> None:
     """Reserve the next topic on GitHub before posting — prevents duplicate FB posts."""
+    if MAX_POSTS_PER_DAY > 0:
+        today_count = posts_today()
+        if today_count >= MAX_POSTS_PER_DAY:
+            print(
+                f"[main] Daily limit reached ({today_count}/{MAX_POSTS_PER_DAY}). "
+                "Not claiming a slot."
+            )
+            return
     curiosities = load_curiosities()
     sync_posted_from_log(curiosities)
     curiosities = load_curiosities()
