@@ -1,8 +1,8 @@
-# cron-job.org Setup — 1 cron job, 11 posts/day
+# cron-job.org Setup — 1 cron job, 7 posts/day
 
-You only need **ONE cron job**. It fires every ~2 hours, and the script:
+You only need **ONE cron job**. It fires every ~3 hours, and the script:
 1. Waits a **random 8–42 minutes** before posting
-2. Checks if **11 posts already went out today** — if yes, skips
+2. Checks if **7 posts already went out today** — if yes, skips
 3. Otherwise posts one curiosity
 
 ---
@@ -20,17 +20,17 @@ You only need **ONE cron job**. It fires every ~2 hours, and the script:
 **Schedule → Custom → Crontab:**
 
 ```
-37 */2 * * *
+37 */3 * * *
 ```
 
-This fires **12 times per day** at irregular `:37` minutes:
-`00:37, 02:37, 04:37, 06:37, 08:37, 10:37, 12:37, 14:37, 16:37, 18:37, 20:37, 22:37`
+This fires **8 times per day** at irregular `:37` minutes:
+`00:37, 03:37, 06:37, 09:37, 12:37, 15:37, 18:37, 21:37`
 
-The script caps at **11 posts/day**, so one run naturally skips.
+The script caps at **7 posts/day**, so one run naturally skips.
 
 Actual post times = trigger + **8–42 min random** → e.g. `10:04`, `13:21`, `19:58`
 
-If this job still has the old crontab `37 */3 * * *`, change it to `37 */2 * * *`. Do not add a second job.
+If this job still has `37 */2 * * *`, change it back to `37 */3 * * *`. Do not add a second job.
 
 ### ADVANCED tab
 
@@ -58,19 +58,19 @@ Content-Type: application/json
 ## How it works
 
 ```
-ONE cron (every 2h at :37)
+ONE cron (every 3h at :37)
     → GitHub Actions starts
     → sleeps 8-42 min randomly
-    → checks: posted 11 times today?
+    → checks: posted 7 times today?
         YES → skip
         NO  → generate + post 1 curiosity
 ```
 
 ---
 
-## Cost: ~$24–28/month
+## Cost: ~$15–18/month
 
-11 posts/day × 30 days = 330 AI images/month.
+7 posts/day × 30 days = 210 AI images/month.
 
 ---
 

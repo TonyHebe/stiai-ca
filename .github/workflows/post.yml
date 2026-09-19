@@ -42,7 +42,7 @@ jobs:
           echo "OPENAI_MODEL=gpt-4o-mini" >> .env
           echo "LOW_CONTENT_THRESHOLD=4" >> .env
           echo "GENERATE_BATCH_SIZE=8" >> .env
-          echo "MAX_POSTS_PER_DAY=11" >> .env
+          echo "MAX_POSTS_PER_DAY=7" >> .env
           echo "TIMEZONE=Europe/Bucharest" >> .env
           echo "MAX_RANDOM_DELAY_SECONDS=0" >> .env
           echo "FORCE_REGENERATE_IMAGE=true" >> .env
