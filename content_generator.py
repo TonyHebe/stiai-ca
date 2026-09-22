@@ -371,12 +371,16 @@ def generate_curiosities(count: int = 1, topic: str = None) -> list:
                 # Step 1: GPT writes text
                 gpt_data = gpt_generate(chosen, client)
 
-                # Step 2: DALL-E generates image
                 entry_id   = make_id(gpt_data["title"], existing | {e["id"] for e in new_entries})
                 image_name = f"{entry_id}.jpg"
                 image_path = IMAGES_DIR / image_name
 
-                dalle_generate(gpt_data["image_prompt"], image_path, client)
+                # Step 2: Generate image now only when called standalone.
+                # When called from the auto-poster workflow, skip the image
+                # here — resolve_background() generates it at post time,
+                # avoiding paying twice for the same picture.
+                if not os.getenv("SKIP_BATCH_IMAGES", "").lower() in ("1", "true", "yes"):
+                    dalle_generate(gpt_data["image_prompt"], image_path, client)
 
                 # Build entry
                 entry = {

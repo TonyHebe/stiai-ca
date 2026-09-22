@@ -45,7 +45,8 @@ jobs:
           echo "MAX_POSTS_PER_DAY=7" >> .env
           echo "TIMEZONE=Europe/Bucharest" >> .env
           echo "MAX_RANDOM_DELAY_SECONDS=0" >> .env
-          echo "FORCE_REGENERATE_IMAGE=true" >> .env
+          echo "FORCE_REGENERATE_IMAGE=false" >> .env
+          echo "SKIP_BATCH_IMAGES=true" >> .env
 
       - name: Sync latest state
         run: git pull --rebase origin master
